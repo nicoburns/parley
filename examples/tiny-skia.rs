@@ -9,7 +9,7 @@ use parley::style::{FontStack, FontWeight, StyleProperty};
 use parley::{FontContext, LayoutContext};
 use peniko::Color as PenikoColor;
 use skrifa::instance::{LocationRef, Size};
-use skrifa::outline::{DrawSettings, OutlinePen};
+use skrifa::outline::{DrawSettings, HintingInstance, HintingMode, LcdLayout, OutlinePen};
 use skrifa::raw::FontRef as ReadFontsRef;
 use skrifa::{GlyphId, MetadataProvider, OutlineGlyph};
 use tiny_skia::{
@@ -121,6 +121,16 @@ fn render_glyph_run(glyph_run: &GlyphRun<PenikoColor>, pen: &mut TinySkiaPen<'_>
     let font_ref = ReadFontsRef::from_index(font_collection_ref, font.index).unwrap();
     let outlines = font_ref.outline_glyphs();
 
+    // Create hinting instance. This can also be cached for better performance.
+    let hinting = HintingInstance::new(
+        &outlines,
+        Size::new(font_size),
+        LocationRef::default(),
+        // HintingMode::default(),
+        HintingMode::Smooth { lcd_subpixel: Some(LcdLayout::Horizontal), preserve_linear_metrics: false },
+    )
+    .unwrap();
+
     // Iterates over the glyphs in the GlyphRun
     for glyph in glyph_run.glyphs() {
         let glyph_x = run_x + glyph.x + padding as f32;
@@ -130,9 +140,12 @@ fn render_glyph_run(glyph_run: &GlyphRun<PenikoColor>, pen: &mut TinySkiaPen<'_>
         let glyph_id = GlyphId::from(glyph.id);
         let glyph_outline = outlines.get(glyph_id).unwrap();
 
+        let settings = DrawSettings::hinted(&hinting, false);
+        // let settings = DrawSettings::unhinted(Size::new(size), LocationRef::default());
+
         pen.set_origin(glyph_x, glyph_y);
         pen.set_color(to_tiny_skia(color));
-        pen.draw_glyph(&glyph_outline, font_size);
+        pen.draw_glyph(&glyph_outline, settings);
     }
 }
 
@@ -164,8 +177,7 @@ impl TinySkiaPen<'_> {
         self.paint.set_color(color);
     }
 
-    fn draw_glyph(&mut self, glyph: &OutlineGlyph<'_>, size: f32) {
-        let settings = DrawSettings::unhinted(Size::new(size), LocationRef::default());
+    fn draw_glyph(&mut self, glyph: &OutlineGlyph<'_>, settings: DrawSettings) {
         glyph.draw(settings, self).unwrap();
     }
 }
