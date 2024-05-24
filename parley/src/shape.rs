@@ -49,6 +49,11 @@ pub fn shape_text<'a, B: Brush>(
 ) {
     // Do nothing if there is no text or styles (there should always be a default style)
     if text.is_empty() || styles.is_empty() {
+        // Process any remaining inline boxes whose index is greater than the length of the text
+        for box_idx in 0..inline_boxes.len() {
+            // Push the box to the list of items
+            layout.data.push_inline_box(box_idx);
+        }
         return;
     }
 
@@ -133,6 +138,7 @@ pub fn shape_text<'a, B: Brush>(
     // Iterate over characters in the text
     for ((char_index, ch), (info, style_index)) in text.chars().enumerate().zip(infos) {
         let mut break_run = false;
+        let mut deferred_boxes: Vec<usize> = Vec::new();
         let mut script = info.script();
         if !real_script(script) {
             script = item.script;
@@ -162,15 +168,16 @@ pub fn shape_text<'a, B: Brush>(
         //   - We do this *before* processing the text run because a box at index 0 should
         //     be placed before item 0
         while let Some((box_idx, inline_box)) = current_box {
+            // println!("{} {}", char_index, inline_box.index);
+
             if inline_box.index == char_index {
                 break_run = true;
-
-                // Push the box to the list of items
-                layout.data.push_inline_box(box_idx);
-
+                deferred_boxes.push(box_idx);
                 // Update the current box to the next box
                 current_box = inline_box_iter.next();
-            }
+            } else {
+                break;
+            };
         }
 
         if break_run && !text_range.is_empty() {
@@ -184,6 +191,12 @@ pub fn shape_text<'a, B: Brush>(
             text_range.start = text_range.end;
             char_range.start = char_range.end;
         }
+
+        while let Some(box_idx) = deferred_boxes.pop() {
+            // Push the box to the list of items
+            layout.data.push_inline_box(box_idx);
+        }
+
         text_range.end += ch.len_utf8();
         char_range.end += 1;
     }
@@ -193,8 +206,10 @@ pub fn shape_text<'a, B: Brush>(
     }
 
     // Process any remaining inline boxes whose index is greater than the length of the text
-    while let Some((box_idx, _inline_box)) = inline_box_iter.next() {
-        // Push the box to the list of items
+    if let Some((box_idx, _inline_box)) = current_box {
+        layout.data.push_inline_box(box_idx);
+    }
+    for (box_idx, _inline_box) in inline_box_iter {
         layout.data.push_inline_box(box_idx);
     }
 }

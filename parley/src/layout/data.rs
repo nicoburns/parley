@@ -101,7 +101,9 @@ pub struct LineData {
     /// Range of the source text.
     pub text_range: Range<usize>,
     /// Range of line runs.
-    pub run_range: Range<usize>,
+    // pub run_range: Range<usize>,
+    /// Range of line items.
+    pub item_range: Range<usize>,
     /// Metrics for the line.
     pub metrics: LineMetrics,
     /// The cause of the line break.
@@ -124,7 +126,7 @@ impl LineData {
 pub struct LineItemData {
     /// Whether the item is a run or an inline box
     pub kind: LayoutItemKind,
-    /// The index of the run or inline box in the runs or inline_boxes vec
+    /// The index of the run or inline box in the runs or `inline_boxes` vec
     pub index: usize,
     /// Bidi level for the item (used for reordering)
     pub bidi_level: u8,
@@ -133,7 +135,6 @@ pub struct LineItemData {
 
     // Fields that only apply to text runs (Ignored for boxes)
     // TODO: factor this out?
-
     /// True if the run is composed entirely of whitespace.
     pub is_whitespace: bool,
     /// True if the run ends in whitespace.
@@ -145,6 +146,14 @@ pub struct LineItemData {
 }
 
 impl LineItemData {
+    pub fn is_text_run(&self) -> bool {
+        self.kind == LayoutItemKind::TextRun
+    }
+
+    pub fn is_inline_box(&self) -> bool {
+        self.kind == LayoutItemKind::InlineBox
+    }
+
     pub fn compute_line_height<B: Brush>(&self, layout: &LayoutData<B>) -> f32 {
         match self.kind {
             LayoutItemKind::TextRun => {
@@ -169,12 +178,12 @@ impl LineItemData {
             LayoutItemKind::InlineBox => {
                 // TODO: account for vertical alignment (e.g. baseline alignment)
                 layout.inline_boxes[self.index].height
-            },
+            }
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LayoutItemKind {
     TextRun,
     InlineBox,
@@ -184,7 +193,7 @@ pub enum LayoutItemKind {
 pub struct LayoutItem {
     /// Whether the item is a run or an inline box
     pub kind: LayoutItemKind,
-    /// The index of the run or inline box in the runs or inline_boxes vec
+    /// The index of the run or inline box in the runs or `inline_boxes` vec
     pub index: usize,
     /// Bidi level for the item (used for reordering)
     pub bidi_level: u8,
@@ -202,7 +211,7 @@ pub struct LayoutData<B: Brush> {
     pub fonts: Vec<Font>,
     pub coords: Vec<i16>,
 
-    // Input / output of style resolution
+    // Input (/ output of style resolution)
     pub styles: Vec<Style<B>>,
     pub inline_boxes: Vec<InlineBox>,
 
