@@ -197,7 +197,7 @@ pub struct Style<B: Brush> {
     pub underline: Option<Decoration<B>>,
     /// Strikethrough decoration.
     pub strikethrough: Option<Decoration<B>>,
-    /// Multiplicative line height factor.
+    /// Baked line height (multiplicative line height multiplied by font size)
     pub(crate) line_height: f32,
 }
 

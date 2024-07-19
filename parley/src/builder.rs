@@ -188,7 +188,7 @@ fn build_into_layout<B: Brush>(
             brush: s.brush.clone(),
             underline: conv_deco(&s.underline, &s.brush),
             strikethrough: conv_deco(&s.strikethrough, &s.brush),
-            line_height: s.line_height,
+            line_height: s.line_height * s.font_size,
         }
     }));
 
