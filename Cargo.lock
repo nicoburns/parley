@@ -116,9 +116,9 @@ checksum = "6b4930d2cb77ce62f89ee5d5289b4ac049559b1c45539271f5ed4fdc7db34545"
 
 [[package]]
 name = "arrayvec"
-version = "0.7.4"
+version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96d30a06541fbafbc7f82ed10c06164cfbd2c401138f6addd8404629c4b16711"
+checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
 name = "as-raw-xcb-connection"
@@ -757,7 +757,7 @@ dependencies = [
  "memmap2",
  "objc2",
  "objc2-foundation",
- "peniko",
+ "peniko 0.2.0",
  "roxmltree",
  "skrifa",
  "smallvec",
@@ -1216,9 +1216,9 @@ checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 
 [[package]]
 name = "kurbo"
-version = "0.11.0"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e5aa9f0f96a938266bdb12928a67169e8d22c6a786fda8ed984b85e6ba93c3c"
+checksum = "89234b2cc610a7dd927ebde6b41dd1a5d4214cffaef4cf1fb2195d592f92518f"
 dependencies = [
  "arrayvec",
  "libm",
@@ -1815,7 +1815,7 @@ name = "parley"
 version = "0.1.0"
 dependencies = [
  "fontique",
- "peniko",
+ "peniko 0.2.0",
  "skrifa",
  "swash",
 ]
@@ -1831,6 +1831,16 @@ name = "peniko"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c28d7294093837856bb80ad191cc46a2fcec8a30b43b7a3b0285325f0a917a9"
+dependencies = [
+ "kurbo",
+ "smallvec",
+]
+
+[[package]]
+name = "peniko"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0a648c93f502a0bef0a9cb47fa1335994958a2744667d3f82defe513f276741a"
 dependencies = [
  "kurbo",
  "smallvec",
@@ -2384,7 +2394,7 @@ version = "0.1.0"
 dependencies = [
  "image",
  "parley",
- "peniko",
+ "peniko 0.2.0",
  "skrifa",
  "swash",
 ]
@@ -2512,7 +2522,7 @@ name = "tiny_skia_render"
 version = "0.1.0"
 dependencies = [
  "parley",
- "peniko",
+ "peniko 0.2.0",
  "skrifa",
  "tiny-skia",
 ]
@@ -2644,7 +2654,7 @@ dependencies = [
  "bytemuck",
  "futures-intrusive",
  "log",
- "peniko",
+ "peniko 0.1.1",
  "raw-window-handle",
  "skrifa",
  "static_assertions",
@@ -2661,7 +2671,7 @@ dependencies = [
  "anyhow",
  "clipboard-rs",
  "parley",
- "peniko",
+ "peniko 0.2.0",
  "pollster",
  "vello",
  "winit",
@@ -2675,7 +2685,7 @@ checksum = "e5d73777327877fa824a45c7195f850390dd3f91feb15f47d331db1fc01abf6d"
 dependencies = [
  "bytemuck",
  "guillotiere",
- "peniko",
+ "peniko 0.1.1",
  "skrifa",
  "smallvec",
 ]
