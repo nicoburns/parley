@@ -13,7 +13,7 @@ use swash::Synthesis;
 
 use alloc::vec::Vec;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) struct ClusterData {
     pub(crate) info: ClusterInfo,
     pub(crate) flags: u16,
@@ -79,6 +79,15 @@ pub(crate) struct RunData {
     pub(crate) letter_spacing: f32,
     /// Total advance of the run.
     pub(crate) advance: f32,
+}
+
+impl core::fmt::Debug for RunData {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("RunData")
+            .field("text_range", &self.text_range)
+            .field("glyph_start", &self.glyph_start)
+            .finish()
+    }
 }
 
 #[derive(Copy, Clone, Default, PartialEq, Debug)]

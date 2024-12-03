@@ -119,7 +119,7 @@ impl ApplicationHandler<accesskit_winit::Event> for SimpleVelloApp<'_> {
 
         self.editor.transact(|txn| {
             txn.set_scale(1.0);
-            txn.set_width(Some(size.width as f32 - 2f32 * text::INSET));
+            txn.set_width(Some(0.0));
             txn.set_text(text::LOREM);
         });
 
@@ -238,7 +238,6 @@ impl ApplicationHandler<accesskit_winit::Event> for SimpleVelloApp<'_> {
                     .resize_surface(&mut render_state.surface, size.width, size.height);
                 self.editor.transact(|txn| {
                     txn.set_scale(1.0);
-                    txn.set_width(Some(size.width as f32 - 2f32 * text::INSET));
                     txn.set_default_style(Arc::new([
                         StyleProperty::FontSize(32.0),
                         StyleProperty::LineHeight(1.2),
