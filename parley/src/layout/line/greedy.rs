@@ -144,6 +144,12 @@ impl<'a, B: Brush> BreakLines<'a, B> {
         }
         self.prev_state = Some(self.state.clone());
 
+        let max_advance = if self.layout.data.text_len == 0 {
+            f32::MAX
+        } else {
+            max_advance
+        };
+
         // This macro simply calls the `commit_line` with the provided arguments and some parts of self.
         // It exists solely to cut down on the boilerplate for accessing the self variables while
         // keeping the borrow checker happy
@@ -756,6 +762,14 @@ fn try_commit_line<B: Brush>(
                     // dbg!(cluster_range);
                     continue;
                 }
+
+                // dbg!(&layout.data.text_len);
+                // dbg!(&layout.data.items);
+                // dbg!(&layout.data.runs);
+                // dbg!(&layout.data.glyphs);
+                // dbg!(&layout.data.clusters);
+                // dbg!(&cluster_range);
+                // dbg!(&run_data.cluster_range);
 
                 // Push run to line
                 let run = Run::new(layout, 0, 0, run_data, None);
