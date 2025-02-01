@@ -26,7 +26,7 @@ struct LineLayout {
 }
 
 impl LineLayout {
-    fn swap<B: Brush>(&mut self, layout: &mut LayoutData<B>) {
+    fn swap(&mut self, layout: &mut LayoutData) {
         core::mem::swap(&mut self.lines, &mut layout.lines);
         core::mem::swap(&mut self.line_items, &mut layout.line_items);
     }
@@ -98,16 +98,16 @@ impl BreakerState {
 }
 
 /// Line breaking support for a paragraph.
-pub struct BreakLines<'a, B: Brush> {
-    layout: &'a mut Layout<B>,
+pub struct BreakLines<'a> {
+    layout: &'a mut Layout,
     lines: LineLayout,
     state: BreakerState,
     prev_state: Option<BreakerState>,
     done: bool,
 }
 
-impl<'a, B: Brush> BreakLines<'a, B> {
-    pub(crate) fn new(layout: &'a mut Layout<B>) -> Self {
+impl<'a> BreakLines<'a> {
+    pub(crate) fn new(layout: &'a mut Layout) -> Self {
         unjustify(&mut layout.data);
         layout.data.width = 0.;
         layout.data.height = 0.;
@@ -608,7 +608,7 @@ impl<'a, B: Brush> BreakLines<'a, B> {
     }
 }
 
-impl<B: Brush> Drop for BreakLines<'_, B> {
+impl Drop for BreakLines<'_> {
     fn drop(&mut self) {
         // Compute the overall width and height of the entire layout
         // The "width" excludes trailing whitespace. The "full_width" includes it.
@@ -659,8 +659,8 @@ impl<B: Brush> Drop for BreakLines<'_, B> {
 //         || (cluster_range.start == cluster_range.end && is_empty)
 // }
 
-// fn should_commit_line<B: Brush>(
-//     layout: &LayoutData<B>,
+// fn should_commit_line(
+//     layout: &LayoutData,
 //     state: &mut LineState,
 //     is_last: bool,
 // ) -> bool {
@@ -686,8 +686,8 @@ impl<B: Brush> Drop for BreakLines<'_, B> {
 //     })
 // }
 
-fn try_commit_line<B: Brush>(
-    layout: &Layout<B>,
+fn try_commit_line(
+    layout: &Layout,
     lines: &mut LineLayout,
     state: &mut LineState,
     max_advance: f32,

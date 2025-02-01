@@ -23,7 +23,7 @@ pub struct Cursor {
 
 impl Cursor {
     /// Creates a new cursor from the given byte index and affinity.
-    pub fn from_byte_index<B: Brush>(layout: &Layout<B>, index: usize, affinity: Affinity) -> Self {
+    pub fn from_byte_index(layout: &Layout, index: usize, affinity: Affinity) -> Self {
         if let Some(cluster) = Cluster::from_byte_index(layout, index) {
             let index = cluster.text_range().start;
             let affinity = if cluster.is_line_break() == Some(BreakReason::Explicit) {
@@ -41,7 +41,7 @@ impl Cursor {
     }
 
     /// Creates a new cursor from the given coordinates.
-    pub fn from_point<B: Brush>(layout: &Layout<B>, x: f32, y: f32) -> Self {
+    pub fn from_point(layout: &Layout, x: f32, y: f32) -> Self {
         let (index, affinity) = if let Some((cluster, side)) = Cluster::from_point(layout, x, y) {
             let is_leading = side == ClusterSide::Left;
             if cluster.is_rtl() {
@@ -67,9 +67,9 @@ impl Cursor {
     }
 
     #[cfg(feature = "accesskit")]
-    pub fn from_access_position<B: Brush>(
+    pub fn from_access_position(
         pos: &TextPosition,
-        layout: &Layout<B>,
+        layout: &Layout,
         layout_access: &LayoutAccessibility,
     ) -> Option<Self> {
         let (line_index, run_index) = *layout_access.run_paths_by_access_id.get(&pos.node)?;
@@ -82,9 +82,9 @@ impl Cursor {
         Some(Self::from_byte_index(layout, index, Affinity::Downstream))
     }
 
-    fn from_cluster<B: Brush>(
-        layout: &Layout<B>,
-        cluster: Cluster<'_, B>,
+    fn from_cluster(
+        layout: &Layout,
+        cluster: Cluster<'_>,
         moving_right: bool,
     ) -> Self {
         Self::from_byte_index(
@@ -110,14 +110,14 @@ impl Cursor {
     /// Returns a new cursor that is guaranteed to be within the bounds of the
     /// given layout.
     #[must_use]
-    pub fn refresh<B: Brush>(&self, layout: &Layout<B>) -> Self {
+    pub fn refresh(&self, layout: &Layout) -> Self {
         Self::from_byte_index(layout, self.index, self.affinity)
     }
 
     /// Returns a new cursor that is positioned at the previous cluster boundary
     /// in visual order.
     #[must_use]
-    pub fn previous_visual<B: Brush>(&self, layout: &Layout<B>) -> Self {
+    pub fn previous_visual(&self, layout: &Layout) -> Self {
         let [left, right] = self.visual_clusters(layout);
         if let (Some(left), Some(right)) = (&left, &right) {
             if left.is_soft_line_break() {
@@ -152,7 +152,7 @@ impl Cursor {
     /// Returns a new cursor that is positioned at the next cluster boundary
     /// in visual order.
     #[must_use]
-    pub fn next_visual<B: Brush>(&self, layout: &Layout<B>) -> Self {
+    pub fn next_visual(&self, layout: &Layout) -> Self {
         let [left, right] = self.visual_clusters(layout);
         if let (Some(left), Some(right)) = (&left, &right) {
             if left.is_soft_line_break() {
@@ -193,7 +193,7 @@ impl Cursor {
     /// Returns a new cursor that is positioned at the next word boundary
     /// in visual order.
     #[must_use]
-    pub fn next_visual_word<B: Brush>(&self, layout: &Layout<B>) -> Self {
+    pub fn next_visual_word(&self, layout: &Layout) -> Self {
         let mut cur = *self;
         loop {
             let next = cur.next_visual(layout);
@@ -218,7 +218,7 @@ impl Cursor {
     /// Returns a new cursor that is positioned at the previous word boundary
     /// in visual order.
     #[must_use]
-    pub fn previous_visual_word<B: Brush>(&self, layout: &Layout<B>) -> Self {
+    pub fn previous_visual_word(&self, layout: &Layout) -> Self {
         let mut cur = *self;
         loop {
             let next = cur.previous_visual(layout);
@@ -246,7 +246,7 @@ impl Cursor {
     /// Returns a new cursor that is positioned at the next word boundary
     /// in logical order.
     #[must_use]
-    pub fn next_logical_word<B: Brush>(&self, layout: &Layout<B>) -> Self {
+    pub fn next_logical_word(&self, layout: &Layout) -> Self {
         let [left, right] = self.logical_clusters(layout);
         if let Some(cluster) = right.or(left) {
             let start = cluster.clone();
@@ -262,7 +262,7 @@ impl Cursor {
     /// Returns a new cursor that is positioned at the previous word boundary
     /// in logical order.
     #[must_use]
-    pub fn previous_logical_word<B: Brush>(&self, layout: &Layout<B>) -> Self {
+    pub fn previous_logical_word(&self, layout: &Layout) -> Self {
         let [left, right] = self.logical_clusters(layout);
         if let Some(cluster) = left.or(right) {
             let cluster = cluster.previous_logical_word().unwrap_or(cluster);
@@ -275,7 +275,7 @@ impl Cursor {
     /// in layout space.
     ///
     /// The `width` parameter defines the width of the resulting rectangle.
-    pub fn geometry<B: Brush>(&self, layout: &Layout<B>, width: f32) -> Rect {
+    pub fn geometry(&self, layout: &Layout, width: f32) -> Rect {
         match self.visual_clusters(layout) {
             [Some(left), Some(right)] => {
                 if left.is_end_of_line() {
@@ -307,10 +307,10 @@ impl Cursor {
     /// position.
     ///
     /// The order in the array is upstream followed by downstream.
-    pub fn logical_clusters<'a, B: Brush>(
+    pub fn logical_clusters<'a>(
         &self,
-        layout: &'a Layout<B>,
-    ) -> [Option<Cluster<'a, B>>; 2] {
+        layout: &'a Layout,
+    ) -> [Option<Cluster<'a>>; 2] {
         let upstream = self
             .index
             .checked_sub(1)
@@ -323,10 +323,10 @@ impl Cursor {
     /// position.
     ///
     /// The order in the array is left followed by right.
-    pub fn visual_clusters<'a, B: Brush>(
+    pub fn visual_clusters<'a>(
         &self,
-        layout: &'a Layout<B>,
-    ) -> [Option<Cluster<'a, B>>; 2] {
+        layout: &'a Layout,
+    ) -> [Option<Cluster<'a>>; 2] {
         if self.affinity == Affinity::Upstream {
             if let Some(cluster) = self.upstream_cluster(layout) {
                 if cluster.is_rtl() {
@@ -360,25 +360,25 @@ impl Cursor {
         }
     }
 
-    fn line<B: Brush>(self, layout: &Layout<B>) -> Option<(usize, Line<'_, B>)> {
+    fn line(self, layout: &Layout) -> Option<(usize, Line<'_>)> {
         let geometry = self.geometry(layout, 0.0);
         layout.line_for_offset(geometry.y0 as f32)
     }
 
-    fn upstream_cluster<B: Brush>(self, layout: &Layout<B>) -> Option<Cluster<'_, B>> {
+    fn upstream_cluster(self, layout: &Layout) -> Option<Cluster<'_>> {
         self.index
             .checked_sub(1)
             .and_then(|index| Cluster::from_byte_index(layout, index))
     }
 
-    fn downstream_cluster<B: Brush>(self, layout: &Layout<B>) -> Option<Cluster<'_, B>> {
+    fn downstream_cluster(self, layout: &Layout) -> Option<Cluster<'_>> {
         Cluster::from_byte_index(layout, self.index)
     }
 
     #[cfg(feature = "accesskit")]
-    pub fn to_access_position<B: Brush>(
+    pub fn to_access_position(
         &self,
-        layout: &Layout<B>,
+        layout: &Layout,
         layout_access: &LayoutAccessibility,
     ) -> Option<TextPosition> {
         if layout.data.text_len == 0 {
@@ -447,17 +447,17 @@ impl Selection {
 
     /// Creates a new collapsed selection from the given byte index and
     /// affinity.
-    pub fn from_byte_index<B: Brush>(layout: &Layout<B>, index: usize, affinity: Affinity) -> Self {
+    pub fn from_byte_index(layout: &Layout, index: usize, affinity: Affinity) -> Self {
         Cursor::from_byte_index(layout, index, affinity).into()
     }
 
     /// Creates a new collapsed selection from the given point.
-    pub fn from_point<B: Brush>(layout: &Layout<B>, x: f32, y: f32) -> Self {
+    pub fn from_point(layout: &Layout, x: f32, y: f32) -> Self {
         Cursor::from_point(layout, x, y).into()
     }
 
     /// Creates a new selection bounding the word at the given coordinates.
-    pub fn word_from_point<B: Brush>(layout: &Layout<B>, x: f32, y: f32) -> Self {
+    pub fn word_from_point(layout: &Layout, x: f32, y: f32) -> Self {
         if let Some((mut cluster, _)) = Cluster::from_point(layout, x, y) {
             if !cluster.is_word_boundary() {
                 if let Some(prev) = cluster.previous_logical_word() {
@@ -478,7 +478,7 @@ impl Selection {
     }
 
     /// Creates a new selection bounding the line at the given coordinates.
-    pub fn line_from_point<B: Brush>(layout: &Layout<B>, x: f32, y: f32) -> Self {
+    pub fn line_from_point(layout: &Layout, x: f32, y: f32) -> Self {
         let Self { anchor, focus, .. } = Self::from_point(layout, x, y)
             .line_start(layout, false)
             .line_end(layout, true);
@@ -491,9 +491,9 @@ impl Selection {
     }
 
     #[cfg(feature = "accesskit")]
-    pub fn from_access_selection<B: Brush>(
+    pub fn from_access_selection(
         selection: &accesskit::TextSelection,
-        layout: &Layout<B>,
+        layout: &Layout,
         layout_access: &LayoutAccessibility,
     ) -> Option<Self> {
         let anchor = Cursor::from_access_position(&selection.anchor, layout, layout_access)?;
@@ -534,7 +534,7 @@ impl Selection {
     /// Returns a new selection that is guaranteed to be within the bounds of
     /// the given layout.
     #[must_use]
-    pub fn refresh<B: Brush>(&self, layout: &Layout<B>) -> Self {
+    pub fn refresh(&self, layout: &Layout) -> Self {
         let anchor = self.anchor.refresh(layout);
         let focus = self.focus.refresh(layout);
         let anchor_base = match self.anchor_base {
@@ -568,7 +568,7 @@ impl Selection {
     /// If `extend` is `true` then the current anchor will be retained,
     /// otherwise the new selection will be collapsed.
     #[must_use]
-    pub fn next_visual<B: Brush>(&self, layout: &Layout<B>, extend: bool) -> Self {
+    pub fn next_visual(&self, layout: &Layout, extend: bool) -> Self {
         if !self.is_collapsed() && !extend {
             let anchor_geom = self.anchor.geometry(layout, 0.0);
             let focus_geom = self.focus.geometry(layout, 0.0);
@@ -589,7 +589,7 @@ impl Selection {
     /// If `extend` is `true` then the current anchor will be retained,
     /// otherwise the new selection will be collapsed.
     #[must_use]
-    pub fn previous_visual<B: Brush>(&self, layout: &Layout<B>, extend: bool) -> Self {
+    pub fn previous_visual(&self, layout: &Layout, extend: bool) -> Self {
         if !self.is_collapsed() && !extend {
             let anchor_geom = self.anchor.geometry(layout, 0.0);
             let focus_geom = self.focus.geometry(layout, 0.0);
@@ -610,7 +610,7 @@ impl Selection {
     /// If `extend` is `true` then the current anchor will be retained,
     /// otherwise the new selection will be collapsed.
     #[must_use]
-    pub fn next_visual_word<B: Brush>(&self, layout: &Layout<B>, extend: bool) -> Self {
+    pub fn next_visual_word(&self, layout: &Layout, extend: bool) -> Self {
         self.maybe_extend(self.focus.next_visual_word(layout), extend)
     }
 
@@ -620,7 +620,7 @@ impl Selection {
     /// If `extend` is `true` then the current anchor will be retained,
     /// otherwise the new selection will be collapsed.
     #[must_use]
-    pub fn previous_visual_word<B: Brush>(&self, layout: &Layout<B>, extend: bool) -> Self {
+    pub fn previous_visual_word(&self, layout: &Layout, extend: bool) -> Self {
         self.maybe_extend(self.focus.previous_visual_word(layout), extend)
     }
 
@@ -630,7 +630,7 @@ impl Selection {
     /// If `extend` is `true` then the current anchor will be retained,
     /// otherwise the new selection will be collapsed.
     #[must_use]
-    pub fn next_line<B: Brush>(&self, layout: &Layout<B>, extend: bool) -> Self {
+    pub fn next_line(&self, layout: &Layout, extend: bool) -> Self {
         self.move_lines(layout, 1, extend)
     }
 
@@ -640,7 +640,7 @@ impl Selection {
     /// If `extend` is `true` then the current anchor will be retained,
     /// otherwise the new selection will be collapsed.
     #[must_use]
-    pub fn previous_line<B: Brush>(&self, layout: &Layout<B>, extend: bool) -> Self {
+    pub fn previous_line(&self, layout: &Layout, extend: bool) -> Self {
         self.move_lines(layout, -1, extend)
     }
 
@@ -654,7 +654,7 @@ impl Selection {
     /// If `extend` is `true` then the current anchor will be retained,
     /// otherwise the new selection will be collapsed.
     #[must_use]
-    pub fn move_lines<B: Brush>(&self, layout: &Layout<B>, delta: isize, extend: bool) -> Self {
+    pub fn move_lines(&self, layout: &Layout, delta: isize, extend: bool) -> Self {
         if delta == 0 {
             return *self;
         }
@@ -678,7 +678,7 @@ impl Selection {
     }
 
     #[must_use]
-    fn move_to_line<B: Brush>(&self, layout: &Layout<B>, line_index: usize, extend: bool) -> Self {
+    fn move_to_line(&self, layout: &Layout, line_index: usize, extend: bool) -> Self {
         let Some(line) = layout.get(line_index) else {
             return *self;
         };
@@ -711,7 +711,7 @@ impl Selection {
     /// If `extend` is `true` then the current anchor will be retained,
     /// otherwise the new selection will be collapsed.
     #[must_use]
-    pub fn line_start<B: Brush>(&self, layout: &Layout<B>, extend: bool) -> Self {
+    pub fn line_start(&self, layout: &Layout, extend: bool) -> Self {
         if let Some((_, line)) = self.focus.line(layout) {
             self.maybe_extend(
                 Cursor::from_byte_index(layout, line.text_range().start, Affinity::Downstream),
@@ -728,7 +728,7 @@ impl Selection {
     /// If `extend` is `true` then the current anchor will be retained,
     /// otherwise the new selection will be collapsed.
     #[must_use]
-    pub fn line_end<B: Brush>(&self, layout: &Layout<B>, extend: bool) -> Self {
+    pub fn line_end(&self, layout: &Layout, extend: bool) -> Self {
         if let Some((_, line)) = self.focus.line(layout) {
             let (index, affinity) = (line.break_reason() == BreakReason::Explicit)
                 .then(|| {
@@ -748,7 +748,7 @@ impl Selection {
     /// If the initial selection was created from a word or line, then the new
     /// selection will be extended at the same granularity.
     #[must_use]
-    pub fn extend_to_point<B: Brush>(&self, layout: &Layout<B>, x: f32, y: f32) -> Self {
+    pub fn extend_to_point(&self, layout: &Layout, x: f32, y: f32) -> Self {
         match self.anchor_base {
             AnchorBase::Cluster => Self::new(self.anchor, Cursor::from_point(layout, x, y)),
             AnchorBase::Word(start, end) => {
@@ -787,7 +787,7 @@ impl Selection {
     /// geometry of this selection for the given layout.
     ///
     /// This is a convenience method built on [`geometry_with`](Self::geometry_with).
-    pub fn geometry<B: Brush>(&self, layout: &Layout<B>) -> Vec<Rect> {
+    pub fn geometry(&self, layout: &Layout) -> Vec<Rect> {
         let mut rects = Vec::new();
         self.geometry_with(layout, |rect| rects.push(rect));
         rects
@@ -798,7 +798,7 @@ impl Selection {
     ///
     /// This avoids allocation if the intent is to render the rectangles
     /// immediately.
-    pub fn geometry_with<B: Brush>(&self, layout: &Layout<B>, mut f: impl FnMut(Rect)) {
+    pub fn geometry_with(&self, layout: &Layout, mut f: impl FnMut(Rect)) {
         // Ensure we add some visual indicator for selected empty
         // lines.
         // Make this configurable?
@@ -867,9 +867,9 @@ impl Selection {
     }
 
     #[cfg(feature = "accesskit")]
-    pub fn to_access_selection<B: Brush>(
+    pub fn to_access_selection(
         &self,
-        layout: &Layout<B>,
+        layout: &Layout,
         layout_access: &LayoutAccessibility,
     ) -> Option<accesskit::TextSelection> {
         let anchor = self.anchor.to_access_position(layout, layout_access)?;
@@ -900,7 +900,7 @@ enum AnchorBase {
     Line(Cursor, Cursor),
 }
 
-fn cursor_rect<B: Brush>(cluster: &Cluster<'_, B>, at_end: bool, size: f32) -> Rect {
+fn cursor_rect(cluster: &Cluster<'_>, at_end: bool, size: f32) -> Rect {
     let line_x = (cluster.visual_offset().unwrap_or_default()
         + at_end.then(|| cluster.advance()).unwrap_or_default()) as f64;
     let line = cluster.line();
@@ -913,7 +913,7 @@ fn cursor_rect<B: Brush>(cluster: &Cluster<'_, B>, at_end: bool, size: f32) -> R
     )
 }
 
-fn last_line_cursor_rect<B: Brush>(layout: &Layout<B>, size: f32) -> Rect {
+fn last_line_cursor_rect(layout: &Layout, size: f32) -> Rect {
     if let Some(line) = layout.get(layout.len().saturating_sub(1)) {
         let metrics = line.metrics();
         Rect::new(
@@ -938,7 +938,7 @@ fn affinity_for_dir(is_rtl: bool, moving_right: bool) -> Affinity {
 /// the set.
 ///
 /// Used for extending word and line selections.
-fn cursor_min_max<B: Brush>(layout: &Layout<B>, cursors: [Cursor; 4]) -> [Cursor; 2] {
+fn cursor_min_max(layout: &Layout, cursors: [Cursor; 4]) -> [Cursor; 2] {
     let cursor_pos = cursors
         .map(|cursor| (cursor, cursor.geometry(layout, 0.0)))
         .map(|(cursor, rect)| (cursor, (rect.y0, rect.x0)));

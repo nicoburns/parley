@@ -50,11 +50,11 @@ pub enum Alignment {
 
 /// Text layout.
 #[derive(Clone)]
-pub struct Layout<B: Brush> {
-    pub(crate) data: LayoutData<B>,
+pub struct Layout {
+    pub(crate) data: LayoutData,
 }
 
-impl<B: Brush> Layout<B> {
+impl Layout {
     /// Creates an empty layout.
     pub fn new() -> Self {
         Self::default()
@@ -66,7 +66,7 @@ impl<B: Brush> Layout<B> {
     }
 
     /// Returns the style collection for the layout.
-    pub fn styles(&self) -> &[Style<B>] {
+    pub fn styles(&self) -> &[Style] {
         &self.data.styles
     }
 
@@ -97,7 +97,7 @@ impl<B: Brush> Layout<B> {
     }
 
     /// Returns the line at the specified index.
-    pub fn get(&self, index: usize) -> Option<Line<'_, B>> {
+    pub fn get(&self, index: usize) -> Option<Line<'_>> {
         Some(Line {
             index: index as u32,
             layout: self,
@@ -119,7 +119,7 @@ impl<B: Brush> Layout<B> {
     }
 
     /// Returns an iterator over the lines in the layout.
-    pub fn lines(&self) -> impl Iterator<Item = Line<'_, B>> + '_ + Clone {
+    pub fn lines(&self) -> impl Iterator<Item = Line<'_>> + '_ + Clone {
         self.data
             .lines
             .iter()
@@ -132,7 +132,7 @@ impl<B: Brush> Layout<B> {
     }
 
     /// Returns line breaker to compute lines for the layout.
-    pub fn break_lines(&mut self) -> BreakLines<'_, B> {
+    pub fn break_lines(&mut self) -> BreakLines<'_> {
         BreakLines::new(self)
     }
 
@@ -164,7 +164,7 @@ impl<B: Brush> Layout<B> {
 
     /// Returns the index and `Line` object for the line containing the
     /// given byte `index` in the source text.
-    pub(crate) fn line_for_byte_index(&self, index: usize) -> Option<(usize, Line<'_, B>)> {
+    pub(crate) fn line_for_byte_index(&self, index: usize) -> Option<(usize, Line<'_>)> {
         let line_index = self
             .data
             .lines
@@ -187,7 +187,7 @@ impl<B: Brush> Layout<B> {
     /// The offset is specified in the direction orthogonal to line direction.
     /// For horizontal text, this is a vertical or y offset. If the offset is
     /// on a line boundary, it is considered to be contained by the later line.
-    pub(crate) fn line_for_offset(&self, offset: f32) -> Option<(usize, Line<'_, B>)> {
+    pub(crate) fn line_for_offset(&self, offset: f32) -> Option<(usize, Line<'_>)> {
         if offset < 0.0 {
             return Some((0, self.get(0)?));
         }
@@ -208,7 +208,7 @@ impl<B: Brush> Layout<B> {
     }
 }
 
-impl<B: Brush> Default for Layout<B> {
+impl Default for Layout {
     fn default() -> Self {
         Self {
             data: Default::default(),
@@ -218,8 +218,8 @@ impl<B: Brush> Default for Layout<B> {
 
 /// Sequence of clusters with a single font and style.
 #[derive(Copy, Clone)]
-pub struct Run<'a, B: Brush> {
-    layout: &'a Layout<B>,
+pub struct Run<'a> {
+    layout: &'a Layout,
     line_index: u32,
     index: u32,
     data: &'a RunData,
@@ -228,9 +228,9 @@ pub struct Run<'a, B: Brush> {
 
 /// Atomic unit of text.
 #[derive(Copy, Clone)]
-pub struct Cluster<'a, B: Brush> {
+pub struct Cluster<'a> {
     path: ClusterPath,
-    run: Run<'a, B>,
+    run: Run<'a>,
     data: &'a ClusterData,
 }
 
@@ -253,8 +253,8 @@ impl Glyph {
 
 /// Line in a text layout.
 #[derive(Copy, Clone)]
-pub struct Line<'a, B: Brush> {
-    layout: &'a Layout<B>,
+pub struct Line<'a> {
+    layout: &'a Layout,
     index: u32,
     data: &'a LineData,
 }
@@ -262,22 +262,22 @@ pub struct Line<'a, B: Brush> {
 #[allow(clippy::partial_pub_fields)]
 /// Style properties.
 #[derive(Clone, Debug)]
-pub struct Style<B: Brush> {
+pub struct Style {
     /// External ID for the style span
     pub id: u64,
     /// Brush for drawing glyphs.
     pub brush: B,
     /// Underline decoration.
-    pub underline: Option<Decoration<B>>,
+    pub underline: Option<Decoration>,
     /// Strikethrough decoration.
-    pub strikethrough: Option<Decoration<B>>,
+    pub strikethrough: Option<Decoration>,
     /// Absolute line height in layout units (style line height * font size)
     pub(crate) line_height: f32,
 }
 
 /// Underline or strikethrough decoration.
 #[derive(Clone, Debug)]
-pub struct Decoration<B: Brush> {
+pub struct Decoration {
     /// Brush used to draw the decoration.
     pub brush: B,
     /// Offset of the decoration from the baseline. If `None`, use the metrics
@@ -303,10 +303,10 @@ pub struct LayoutAccessibility {
 #[cfg(feature = "accesskit")]
 impl LayoutAccessibility {
     #[allow(clippy::too_many_arguments)]
-    pub fn build_nodes<B: Brush>(
+    pub fn build_nodes(
         &mut self,
         text: &str,
-        layout: &Layout<B>,
+        layout: &Layout,
         update: &mut TreeUpdate,
         parent_node: &mut Node,
         mut next_node_id: impl FnMut() -> NodeId,

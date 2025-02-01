@@ -15,9 +15,9 @@ pub enum ClusterSide {
     Right,
 }
 
-impl<'a, B: Brush> Cluster<'a, B> {
+impl<'a> Cluster<'a> {
     /// Returns the cluster for the given layout and byte index.
-    pub fn from_byte_index(layout: &'a Layout<B>, byte_index: usize) -> Option<Self> {
+    pub fn from_byte_index(layout: &'a Layout, byte_index: usize) -> Option<Self> {
         let mut path = ClusterPath::default();
         if let Some((line_index, line)) = layout.line_for_byte_index(byte_index) {
             path.line_index = line_index as u32;
@@ -38,7 +38,7 @@ impl<'a, B: Brush> Cluster<'a, B> {
     }
 
     /// Returns the cluster and side for the given layout and point.
-    pub fn from_point(layout: &'a Layout<B>, x: f32, y: f32) -> Option<(Self, ClusterSide)> {
+    pub fn from_point(layout: &'a Layout, x: f32, y: f32) -> Option<(Self, ClusterSide)> {
         let mut path = ClusterPath::default();
         if let Some((line_index, line)) = layout.line_for_offset(y) {
             path.line_index = line_index as u32;
@@ -81,12 +81,12 @@ impl<'a, B: Brush> Cluster<'a, B> {
     }
 
     /// Returns the line that contains the cluster.
-    pub fn line(&self) -> Line<'a, B> {
+    pub fn line(&self) -> Line<'a> {
         self.run.layout.get(self.run.line_index as usize).unwrap()
     }
 
     /// Returns the run that contains the cluster.
-    pub fn run(&self) -> Run<'a, B> {
+    pub fn run(&self) -> Run<'a> {
         self.run.clone()
     }
 
@@ -437,17 +437,17 @@ impl ClusterPath {
     }
 
     /// Returns the line for this path and the specified layout.
-    pub fn line<'a, B: Brush>(&self, layout: &'a Layout<B>) -> Option<Line<'a, B>> {
+    pub fn line<'a>(&self, layout: &'a Layout) -> Option<Line<'a>> {
         layout.get(self.line_index())
     }
 
     /// Returns the run for this path and the specified layout.
-    pub fn run<'a, B: Brush>(&self, layout: &'a Layout<B>) -> Option<Run<'a, B>> {
+    pub fn run<'a>(&self, layout: &'a Layout) -> Option<Run<'a>> {
         self.line(layout)?.run(self.run_index())
     }
 
     /// Returns the cluster for this path and the specified layout.
-    pub fn cluster<'a, B: Brush>(&self, layout: &'a Layout<B>) -> Option<Cluster<'a, B>> {
+    pub fn cluster<'a>(&self, layout: &'a Layout) -> Option<Cluster<'a>> {
         self.run(layout)?.get(self.logical_index())
     }
 }

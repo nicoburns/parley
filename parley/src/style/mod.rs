@@ -24,7 +24,7 @@ pub enum WhiteSpaceCollapse {
 
 /// Properties that define a style.
 #[derive(Clone, PartialEq, Debug)]
-pub enum StyleProperty<'a, B: Brush> {
+pub enum StyleProperty<'a> {
     /// Font family stack.
     FontStack(FontStack<'a>),
     /// Font size.
@@ -41,24 +41,18 @@ pub enum StyleProperty<'a, B: Brush> {
     FontFeatures(FontSettings<'a, FontFeature>),
     /// Locale.
     Locale(Option<&'a str>),
-    /// Brush for rendering text.
-    Brush(B),
     /// Underline decoration.
     Underline(bool),
     /// Offset of the underline decoration.
     UnderlineOffset(Option<f32>),
     /// Size of the underline decoration.
     UnderlineSize(Option<f32>),
-    /// Brush for rendering the underline decoration.
-    UnderlineBrush(Option<B>),
     /// Strikethrough decoration.
     Strikethrough(bool),
     /// Offset of the strikethrough decoration.
     StrikethroughOffset(Option<f32>),
     /// Size of the strikethrough decoration.
     StrikethroughSize(Option<f32>),
-    /// Brush for rendering the strikethrough decoration.
-    StrikethroughBrush(Option<B>),
     /// Line height multiplier.
     LineHeight(f32),
     /// Extra spacing between words.
@@ -69,7 +63,7 @@ pub enum StyleProperty<'a, B: Brush> {
 
 /// Unresolved styles.
 #[derive(Clone, PartialEq, Debug)]
-pub struct TextStyle<'a, B: Brush> {
+pub struct TextStyle<'a> {
     /// Font family stack.
     pub font_stack: FontStack<'a>,
     /// Font size.
@@ -95,7 +89,7 @@ pub struct TextStyle<'a, B: Brush> {
     /// Size of the underline decoration.
     pub underline_size: Option<f32>,
     /// Brush for rendering the underline decoration.
-    pub underline_brush: Option<B>,
+    pub underline_brush: Option,
     /// Strikethrough decoration.
     pub has_strikethrough: bool,
     /// Offset of the strikethrough decoration.
@@ -103,7 +97,7 @@ pub struct TextStyle<'a, B: Brush> {
     /// Size of the strikethrough decoration.
     pub strikethrough_size: Option<f32>,
     /// Brush for rendering the strikethrough decoration.
-    pub strikethrough_brush: Option<B>,
+    pub strikethrough_brush: Option,
     /// Line height multiplier.
     pub line_height: f32,
     /// Extra spacing between words.
@@ -112,7 +106,7 @@ pub struct TextStyle<'a, B: Brush> {
     pub letter_spacing: f32,
 }
 
-impl<B: Brush> Default for TextStyle<'_, B> {
+impl Default for TextStyle<'_> {
     fn default() -> Self {
         TextStyle {
             font_stack: FontStack::Source(Cow::Borrowed("sans-serif")),
@@ -139,25 +133,25 @@ impl<B: Brush> Default for TextStyle<'_, B> {
     }
 }
 
-impl<'a, B: Brush> From<FontStack<'a>> for StyleProperty<'a, B> {
+impl<'a> From<FontStack<'a>> for StyleProperty<'a> {
     fn from(fs: FontStack<'a>) -> Self {
         StyleProperty::FontStack(fs)
     }
 }
 
-impl<'a, B: Brush> From<&'a [FontFamily<'a>]> for StyleProperty<'a, B> {
+impl<'a> From<&'a [FontFamily<'a>]> for StyleProperty<'a> {
     fn from(fs: &'a [FontFamily<'a>]) -> Self {
         StyleProperty::FontStack(fs.into())
     }
 }
 
-impl<'a, B: Brush> From<FontFamily<'a>> for StyleProperty<'a, B> {
+impl<'a> From<FontFamily<'a>> for StyleProperty<'a> {
     fn from(f: FontFamily<'a>) -> Self {
         StyleProperty::FontStack(FontStack::from(f))
     }
 }
 
-impl<B: Brush> From<GenericFamily> for StyleProperty<'_, B> {
+impl From<GenericFamily> for StyleProperty<'_> {
     fn from(f: GenericFamily) -> Self {
         StyleProperty::FontStack(f.into())
     }

@@ -142,7 +142,7 @@ impl LineItemData {
         self.kind == LayoutItemKind::TextRun
     }
 
-    pub(crate) fn compute_line_height<B: Brush>(&self, layout: &LayoutData<B>) -> f32 {
+    pub(crate) fn compute_line_height(&self, layout: &LayoutData) -> f32 {
         match self.kind {
             LayoutItemKind::TextRun => {
                 let mut line_height = 0_f32;
@@ -188,7 +188,7 @@ pub(crate) struct LayoutItem {
 }
 
 #[derive(Clone)]
-pub(crate) struct LayoutData<B: Brush> {
+pub(crate) struct LayoutData {
     pub(crate) scale: f32,
     pub(crate) has_bidi: bool,
     pub(crate) base_level: u8,
@@ -200,7 +200,7 @@ pub(crate) struct LayoutData<B: Brush> {
     pub(crate) coords: Vec<i16>,
 
     // Input (/ output of style resolution)
-    pub(crate) styles: Vec<Style<B>>,
+    pub(crate) styles: Vec<Style>,
     pub(crate) inline_boxes: Vec<InlineBox>,
 
     // Output of shaping
@@ -214,7 +214,7 @@ pub(crate) struct LayoutData<B: Brush> {
     pub(crate) line_items: Vec<LineItemData>,
 }
 
-impl<B: Brush> Default for LayoutData<B> {
+impl Default for LayoutData {
     fn default() -> Self {
         Self {
             scale: 1.,
@@ -238,7 +238,7 @@ impl<B: Brush> Default for LayoutData<B> {
     }
 }
 
-impl<B: Brush> LayoutData<B> {
+impl LayoutData {
     pub(crate) fn clear(&mut self) {
         self.scale = 1.;
         self.has_bidi = false;

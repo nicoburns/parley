@@ -11,13 +11,13 @@ use core::ops::{Bound, Range, RangeBounds};
 /// Builder for constructing an ordered sequence of non-overlapping ranged
 /// styles from a collection of ranged style properties.
 #[derive(Clone)]
-pub(crate) struct RangedStyleBuilder<B: Brush> {
-    properties: Vec<RangedProperty<B>>,
-    default_style: ResolvedStyle<B>,
+pub(crate) struct RangedStyleBuilder {
+    properties: Vec<RangedProperty>,
+    default_style: ResolvedStyle,
     len: usize,
 }
 
-impl<B: Brush> Default for RangedStyleBuilder<B> {
+impl Default for RangedStyleBuilder {
     fn default() -> Self {
         Self {
             properties: vec![],
@@ -27,7 +27,7 @@ impl<B: Brush> Default for RangedStyleBuilder<B> {
     }
 }
 
-impl<B: Brush> RangedStyleBuilder<B> {
+impl RangedStyleBuilder {
     /// Prepares the builder for accepting ranged properties for text of the
     /// specified length.
     pub(crate) fn begin(&mut self, len: usize) {
@@ -37,20 +37,20 @@ impl<B: Brush> RangedStyleBuilder<B> {
     }
 
     /// Pushes a property that covers the full range of text.
-    pub(crate) fn push_default(&mut self, property: ResolvedProperty<B>) {
+    pub(crate) fn push_default(&mut self, property: ResolvedProperty) {
         assert!(self.len != !0);
         self.default_style.apply(property);
     }
 
     /// Pushes a property that covers the specified range of text.
-    pub(crate) fn push(&mut self, property: ResolvedProperty<B>, range: impl RangeBounds<usize>) {
+    pub(crate) fn push(&mut self, property: ResolvedProperty, range: impl RangeBounds<usize>) {
         let range = resolve_range(range, self.len);
         assert!(self.len != !0);
         self.properties.push(RangedProperty { property, range });
     }
 
     /// Computes the sequence of ranged styles.
-    pub(crate) fn finish(&mut self, styles: &mut Vec<RangedStyle<B>>) {
+    pub(crate) fn finish(&mut self, styles: &mut Vec<RangedStyle>) {
         if self.len == !0 {
             self.properties.clear();
             self.default_style = ResolvedStyle::default();
@@ -140,7 +140,7 @@ struct SplitRange {
     last: Option<usize>,
 }
 
-fn split_range<B: Brush>(prop: &RangedProperty<B>, spans: &[RangedStyle<B>]) -> SplitRange {
+fn split_range(prop: &RangedProperty, spans: &[RangedStyle]) -> SplitRange {
     let mut range = SplitRange::default();
     let start_span_index =
         match spans.binary_search_by(|span| span.range.start.cmp(&prop.range.start)) {

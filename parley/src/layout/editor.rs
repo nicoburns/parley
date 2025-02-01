@@ -97,13 +97,11 @@ impl<'source> IntoIterator for SplitString<'source> {
 /// which is kept up-to-date as needed.
 /// This layout is invalidated by a number.
 #[derive(Clone)]
-pub struct PlainEditor<T>
-where
-    T: Brush + Clone + Debug + PartialEq + Default,
+pub struct PlainEditor
 {
-    layout: Layout<T>,
+    layout: Layout,
     buffer: String,
-    default_style: StyleSet<T>,
+    default_style: StyleSet,
     #[cfg(feature = "accesskit")]
     layout_access: LayoutAccessibility,
     selection: Selection,
@@ -165,7 +163,7 @@ where
 {
     pub editor: &'a mut PlainEditor<T>,
     pub font_cx: &'a mut FontContext,
-    pub layout_cx: &'a mut LayoutContext<T>,
+    pub layout_cx: &'a mut LayoutContext,
 }
 
 impl<T> PlainEditorDriver<'_, T>
@@ -707,7 +705,7 @@ where
     }
 
     /// Get the up-to-date layout for this driver.
-    pub fn layout(&mut self) -> &Layout<T> {
+    pub fn layout(&mut self) -> &Layout {
         self.editor.layout(self.font_cx, self.layout_cx)
     }
     // --- MARK: Internal helpers---
@@ -722,10 +720,7 @@ where
     }
 }
 
-impl<T> PlainEditor<T>
-where
-    T: Brush + Clone + Debug + PartialEq + Default,
-{
+impl PlainEditor {
     /// Run a series of [`PlainEditorDriver`] methods.
     ///
     /// This type is only used to simplify methods which require both
@@ -733,7 +728,7 @@ where
     pub fn driver<'drv>(
         &'drv mut self,
         font_cx: &'drv mut FontContext,
-        layout_cx: &'drv mut LayoutContext<T>,
+        layout_cx: &'drv mut LayoutContext,
     ) -> PlainEditorDriver<'drv, T> {
         PlainEditorDriver {
             editor: self,
@@ -895,7 +890,7 @@ where
     pub fn layout(
         &mut self,
         font_cx: &mut FontContext,
-        layout_cx: &mut LayoutContext<T>,
+        layout_cx: &mut LayoutContext,
     ) -> &Layout<T> {
         self.refresh_layout(font_cx, layout_cx);
         &self.layout
@@ -946,7 +941,7 @@ where
     /// This should only be used alongside [`try_layout`](Self::try_layout)
     /// or [`try_accessibility`](Self::try_accessibility), if those will be
     /// called in a scope where the contexts are not available.
-    pub fn refresh_layout(&mut self, font_cx: &mut FontContext, layout_cx: &mut LayoutContext<T>) {
+    pub fn refresh_layout(&mut self, font_cx: &mut FontContext, layout_cx: &mut LayoutContext) {
         if self.layout_dirty {
             self.update_layout(font_cx, layout_cx);
         }
@@ -967,7 +962,7 @@ where
     fn replace_selection(
         &mut self,
         font_cx: &mut FontContext,
-        layout_cx: &mut LayoutContext<T>,
+        layout_cx: &mut LayoutContext,
         s: &str,
     ) {
         let range = self.selection.text_range();
@@ -1028,7 +1023,7 @@ where
         self.selection = new_sel;
     }
     /// Update the layout.
-    fn update_layout(&mut self, font_cx: &mut FontContext, layout_cx: &mut LayoutContext<T>) {
+    fn update_layout(&mut self, font_cx: &mut FontContext, layout_cx: &mut LayoutContext) {
         let mut builder = layout_cx.ranged_builder(font_cx, &self.buffer, self.scale);
         for prop in self.default_style.inner().values() {
             builder.push_default(prop.to_owned());

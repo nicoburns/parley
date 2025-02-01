@@ -30,16 +30,16 @@ struct Item {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn shape_text<'a, B: Brush>(
+pub(crate) fn shape_text<'a>(
     rcx: &'a ResolveContext,
     mut fq: Query<'a>,
-    styles: &'a [RangedStyle<B>],
+    styles: &'a [RangedStyle],
     inline_boxes: &[InlineBox],
     infos: &[(CharInfo, u16)],
     levels: &[u8],
     scx: &mut ShapeContext,
     mut text: &str,
-    layout: &mut Layout<B>,
+    layout: &mut Layout,
 ) {
     // If we have both empty text and no inline boxes, shape with a fake space
     // to generate metrics that can be used to size a cursor.
@@ -217,22 +217,22 @@ fn real_script(script: Script) -> bool {
     script != Script::Common && script != Script::Unknown && script != Script::Inherited
 }
 
-struct FontSelector<'a, 'b, B: Brush> {
+struct FontSelector<'a, 'b> {
     query: &'b mut Query<'a>,
     fonts_id: Option<usize>,
     rcx: &'a ResolveContext,
-    styles: &'a [RangedStyle<B>],
+    styles: &'a [RangedStyle],
     style_index: u16,
     attrs: fontique::Attributes,
     variations: &'a [FontVariation],
     features: &'a [FontFeature],
 }
 
-impl<'a, 'b, B: Brush> FontSelector<'a, 'b, B> {
+impl<'a, 'b> FontSelector<'a, 'b> {
     fn new(
         query: &'b mut Query<'a>,
         rcx: &'a ResolveContext,
-        styles: &'a [RangedStyle<B>],
+        styles: &'a [RangedStyle],
         style_index: u16,
         script: Script,
         locale: Option<Language>,
@@ -265,7 +265,7 @@ impl<'a, 'b, B: Brush> FontSelector<'a, 'b, B> {
     }
 }
 
-impl<B: Brush> partition::Selector for FontSelector<'_, '_, B> {
+impl partition::Selector for FontSelector<'_, '_> {
     type SelectedFont = SelectedFont;
 
     fn select_font(&mut self, cluster: &mut CharCluster) -> Option<Self::SelectedFont> {

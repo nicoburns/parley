@@ -4,8 +4,8 @@
 use super::{Alignment, BreakReason, LayoutData};
 use crate::style::Brush;
 
-pub(crate) fn align<B: Brush>(
-    layout: &mut LayoutData<B>,
+pub(crate) fn align(
+    layout: &mut LayoutData,
     alignment_width: Option<f32>,
     alignment: Alignment,
     align_when_overflowing: bool,
@@ -94,7 +94,7 @@ pub(crate) fn align<B: Brush>(
 
 /// Removes previous justification applied to clusters.
 /// This is part of resetting state in preparation for re-linebreaking the same layout.
-pub(crate) fn unjustify<B: Brush>(layout: &mut LayoutData<B>) {
+pub(crate) fn unjustify(layout: &mut LayoutData) {
     for line in &layout.lines {
         if line.alignment == Alignment::Justified
             && line.max_advance.is_finite()

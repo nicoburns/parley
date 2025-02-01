@@ -25,14 +25,14 @@ use swash::text::Language;
 
 /// Style with an associated range.
 #[derive(Debug, Clone)]
-pub(crate) struct RangedStyle<B: Brush> {
+pub(crate) struct RangedStyle {
     pub(crate) id: u64,
-    pub(crate) style: ResolvedStyle<B>,
+    pub(crate) style: ResolvedStyle,
     pub(crate) range: Range<usize>,
 }
 
-impl<B: Brush> RangedStyle<B> {
-    pub(crate) fn as_layout_style(&self) -> layout::Style<B> {
+impl RangedStyle {
+    pub(crate) fn as_layout_style(&self) -> layout::Style {
         let style = &self.style;
         layout::Style {
             id: self.id,
@@ -45,8 +45,8 @@ impl<B: Brush> RangedStyle<B> {
 }
 
 #[derive(Clone)]
-struct RangedProperty<B: Brush> {
-    property: ResolvedProperty<B>,
+struct RangedProperty {
+    property: ResolvedProperty,
     range: Range<usize>,
 }
 
@@ -139,12 +139,12 @@ pub(crate) struct ResolveContext {
 }
 
 impl ResolveContext {
-    pub(crate) fn resolve_property<B: Brush>(
+    pub(crate) fn resolve_property(
         &mut self,
         fcx: &mut FontContext,
-        property: &StyleProperty<'_, B>,
+        property: &StyleProperty<'_>,
         scale: f32,
-    ) -> ResolvedProperty<B> {
+    ) -> ResolvedProperty {
         use ResolvedProperty::*;
         match property {
             StyleProperty::FontStack(value) => FontStack(self.resolve_stack(fcx, value)),
@@ -172,12 +172,12 @@ impl ResolveContext {
         }
     }
 
-    pub(crate) fn resolve_entire_style_set<B: Brush>(
+    pub(crate) fn resolve_entire_style_set(
         &mut self,
         fcx: &mut FontContext,
-        raw_style: &TextStyle<'_, B>,
+        raw_style: &TextStyle<'_>,
         scale: f32,
-    ) -> ResolvedStyle<B> {
+    ) -> ResolvedStyle {
         ResolvedStyle {
             font_stack: self.resolve_stack(fcx, &raw_style.font_stack),
             font_size: raw_style.font_size * scale,
@@ -339,7 +339,7 @@ impl ResolveContext {
 
 /// Style property with resolved resources.
 #[derive(Clone, PartialEq)]
-pub(crate) enum ResolvedProperty<B: Brush> {
+pub(crate) enum ResolvedProperty {
     /// Font stack.
     FontStack(Resolved<FamilyId>),
     /// Font size.
@@ -365,7 +365,7 @@ pub(crate) enum ResolvedProperty<B: Brush> {
     /// Size of the underline decoration.
     UnderlineSize(Option<f32>),
     /// Brush for rendering the underline decoration.
-    UnderlineBrush(Option<B>),
+    UnderlineBrush(Option),
     /// Strikethrough decoration.
     Strikethrough(bool),
     /// Offset of the strikethrough decoration.
@@ -373,7 +373,7 @@ pub(crate) enum ResolvedProperty<B: Brush> {
     /// Size of the strikethrough decoration.
     StrikethroughSize(Option<f32>),
     /// Brush for rendering the strikethrough decoration.
-    StrikethroughBrush(Option<B>),
+    StrikethroughBrush(Option),
     /// Line height multiplier.
     LineHeight(f32),
     /// Extra spacing between words.
@@ -384,7 +384,7 @@ pub(crate) enum ResolvedProperty<B: Brush> {
 
 /// Flattened group of style properties.
 #[derive(Clone, PartialEq, Debug)]
-pub(crate) struct ResolvedStyle<B: Brush> {
+pub(crate) struct ResolvedStyle {
     /// Font stack.
     pub(crate) font_stack: Resolved<FamilyId>,
     /// Font size.
@@ -404,9 +404,9 @@ pub(crate) struct ResolvedStyle<B: Brush> {
     /// Brush for rendering text.
     pub(crate) brush: B,
     /// Underline decoration.
-    pub(crate) underline: ResolvedDecoration<B>,
+    pub(crate) underline: ResolvedDecoration,
     /// Strikethrough decoration.
-    pub(crate) strikethrough: ResolvedDecoration<B>,
+    pub(crate) strikethrough: ResolvedDecoration,
     /// Line height multiplier.
     pub(crate) line_height: f32,
     /// Extra spacing between words.
@@ -415,7 +415,7 @@ pub(crate) struct ResolvedStyle<B: Brush> {
     pub(crate) letter_spacing: f32,
 }
 
-impl<B: Brush> Default for ResolvedStyle<B> {
+impl Default for ResolvedStyle {
     fn default() -> Self {
         Self {
             font_stack: Resolved::default(),
@@ -436,9 +436,9 @@ impl<B: Brush> Default for ResolvedStyle<B> {
     }
 }
 
-impl<B: Brush> ResolvedStyle<B> {
+impl ResolvedStyle {
     /// Applies the specified property to this style.
-    pub(crate) fn apply(&mut self, property: ResolvedProperty<B>) {
+    pub(crate) fn apply(&mut self, property: ResolvedProperty) {
         use ResolvedProperty::*;
         match property {
             FontStack(value) => self.font_stack = value,
@@ -464,7 +464,7 @@ impl<B: Brush> ResolvedStyle<B> {
         }
     }
 
-    pub(crate) fn check(&self, property: &ResolvedProperty<B>) -> bool {
+    pub(crate) fn check(&self, property: &ResolvedProperty) -> bool {
         use ResolvedProperty::*;
         match property {
             FontStack(value) => self.font_stack == *value,
@@ -493,7 +493,7 @@ impl<B: Brush> ResolvedStyle<B> {
 
 /// Underline or strikethrough decoration.
 #[derive(Clone, PartialEq, Default, Debug)]
-pub(crate) struct ResolvedDecoration<B: Brush> {
+pub(crate) struct ResolvedDecoration {
     /// True if the decoration is enabled.
     pub(crate) enabled: bool,
     /// Offset of the decoration from the baseline.
@@ -501,12 +501,12 @@ pub(crate) struct ResolvedDecoration<B: Brush> {
     /// Thickness of the decoration stroke.
     pub(crate) size: Option<f32>,
     /// Brush for the decoration.
-    pub(crate) brush: Option<B>,
+    pub(crate) brush: Option,
 }
 
-impl<B: Brush> ResolvedDecoration<B> {
+impl ResolvedDecoration {
     /// Convert into a layout Decoration (filtering out disabled decorations)
-    pub(crate) fn as_layout_decoration(&self, default_brush: &B) -> Option<layout::Decoration<B>> {
+    pub(crate) fn as_layout_decoration(&self, default_brush: &B) -> Option<layout::Decoration> {
         if self.enabled {
             Some(layout::Decoration {
                 brush: self.brush.clone().unwrap_or_else(|| default_brush.clone()),

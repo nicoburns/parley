@@ -15,7 +15,7 @@ type StyleProperty<Brush> = crate::StyleProperty<'static, Brush>;
 ///
 /// These styles do not have a corresponding range, and are generally unsuited for rich text.
 #[derive(Clone, Debug)]
-pub struct StyleSet<Brush: crate::Brush>(
+pub struct StyleSet(
     HashMap<Discriminant<StyleProperty<Brush>>, StyleProperty<Brush>>,
 );
 

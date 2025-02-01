@@ -25,18 +25,18 @@ use crate::inline_box::InlineBox;
 pub struct LayoutContext<B: Brush = [u8; 4]> {
     pub(crate) bidi: bidi::BidiResolver,
     pub(crate) rcx: ResolveContext,
-    pub(crate) styles: Vec<RangedStyle<B>>,
+    pub(crate) styles: Vec<RangedStyle>,
     pub(crate) inline_boxes: Vec<InlineBox>,
 
     // Reusable style builders (to amortise allocations)
-    pub(crate) ranged_style_builder: RangedStyleBuilder<B>,
-    pub(crate) tree_style_builder: TreeStyleBuilder<B>,
+    pub(crate) ranged_style_builder: RangedStyleBuilder,
+    pub(crate) tree_style_builder: TreeStyleBuilder,
 
     pub(crate) info: Vec<(CharInfo, u16)>,
     pub(crate) scx: ShapeContext,
 }
 
-impl<B: Brush> LayoutContext<B> {
+impl LayoutContext {
     pub fn new() -> Self {
         Self {
             bidi: bidi::BidiResolver::new(),
@@ -54,8 +54,8 @@ impl<B: Brush> LayoutContext<B> {
         &mut self,
         font_ctx: &mut FontContext,
         scale: f32,
-        raw_style: &TextStyle<'_, B>,
-    ) -> ResolvedStyle<B> {
+        raw_style: &TextStyle<'_>,
+    ) -> ResolvedStyle {
         self.rcx
             .resolve_entire_style_set(font_ctx, raw_style, scale)
     }
@@ -65,7 +65,7 @@ impl<B: Brush> LayoutContext<B> {
         fcx: &'a mut FontContext,
         text: &'a str,
         scale: f32,
-    ) -> RangedBuilder<'a, B> {
+    ) -> RangedBuilder<'a> {
         self.begin();
         self.analyze_text(text);
         self.ranged_style_builder.begin(text.len());
@@ -84,8 +84,8 @@ impl<B: Brush> LayoutContext<B> {
         fcx: &'a mut FontContext,
         scale: f32,
         root_node_id: u64,
-        raw_style: &TextStyle<'_, B>,
-    ) -> TreeBuilder<'a, B> {
+        raw_style: &TextStyle<'_>,
+    ) -> TreeBuilder<'a> {
         self.begin();
 
         let resolved_root_style = self.resolve_style_set(fcx, scale, raw_style);
@@ -125,13 +125,13 @@ impl<B: Brush> LayoutContext<B> {
     }
 }
 
-impl<B: Brush> Default for LayoutContext<B> {
+impl Default for LayoutContext {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<B: Brush> Clone for LayoutContext<B> {
+impl Clone for LayoutContext {
     fn clone(&self) -> Self {
         // None of the internal state is visible so just return a new instance.
         Self::new()

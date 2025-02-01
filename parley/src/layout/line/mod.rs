@@ -5,7 +5,7 @@ use super::{BreakReason, Brush, Glyph, LayoutItemKind, Line, LineItemData, Range
 
 pub(crate) mod greedy;
 
-impl<'a, B: Brush> Line<'a, B> {
+impl<'a> Line<'a> {
     /// Returns the metrics for the line.
     pub fn metrics(&self) -> &LineMetrics {
         &self.data.metrics
@@ -41,7 +41,7 @@ impl<'a, B: Brush> Line<'a, B> {
     }
 
     /// Returns the run at the specified index.
-    pub fn run(&self, index: usize) -> Option<Run<'a, B>> {
+    pub fn run(&self, index: usize) -> Option<Run<'a>> {
         let original_index = index;
         let index = self.data.item_range.start + index;
         if index >= self.data.item_range.end {
@@ -64,7 +64,7 @@ impl<'a, B: Brush> Line<'a, B> {
 
     /// Returns an iterator over the runs for the line.
     // TODO: provide iterator over inline_boxes and items
-    pub fn runs(&self) -> impl Iterator<Item = Run<'a, B>> + 'a + Clone {
+    pub fn runs(&self) -> impl Iterator<Item = Run<'a>> + 'a + Clone {
         let copy = self.clone();
         let line_items = &copy.layout.data.line_items[self.data.item_range.clone()];
         line_items
@@ -81,7 +81,7 @@ impl<'a, B: Brush> Line<'a, B> {
     }
 
     /// Returns an iterator over the glyph runs for the line.
-    pub fn items(&self) -> impl Iterator<Item = PositionedLayoutItem<'a, B>> + 'a + Clone {
+    pub fn items(&self) -> impl Iterator<Item = PositionedLayoutItem<'a>> + 'a + Clone {
         GlyphRunIter {
             line: self.clone(),
             item_index: 0,
@@ -132,8 +132,8 @@ impl LineMetrics {
 
 /// The computed result of an item (glyph run or inline box) within a layout
 #[derive(Clone)]
-pub enum PositionedLayoutItem<'a, B: Brush> {
-    GlyphRun(GlyphRun<'a, B>),
+pub enum PositionedLayoutItem<'a> {
+    GlyphRun(GlyphRun<'a>),
     InlineBox(PositionedInlineBox),
 }
 
@@ -149,9 +149,9 @@ pub struct PositionedInlineBox {
 
 /// Sequence of fully positioned glyphs with the same style.
 #[derive(Clone)]
-pub struct GlyphRun<'a, B: Brush> {
-    run: Run<'a, B>,
-    style: &'a Style<B>,
+pub struct GlyphRun<'a> {
+    run: Run<'a>,
+    style: &'a Style,
     glyph_start: usize,
     glyph_count: usize,
     offset: f32,
@@ -159,14 +159,14 @@ pub struct GlyphRun<'a, B: Brush> {
     advance: f32,
 }
 
-impl<'a, B: Brush> GlyphRun<'a, B> {
+impl<'a> GlyphRun<'a> {
     /// Returns the underlying run.
-    pub fn run(&self) -> &Run<'a, B> {
+    pub fn run(&self) -> &Run<'a> {
         &self.run
     }
 
     /// Returns the associated style.
-    pub fn style(&self) -> &Style<B> {
+    pub fn style(&self) -> &Style {
         self.style
     }
 
@@ -208,15 +208,15 @@ impl<'a, B: Brush> GlyphRun<'a, B> {
 }
 
 #[derive(Clone)]
-struct GlyphRunIter<'a, B: Brush> {
-    line: Line<'a, B>,
+struct GlyphRunIter<'a> {
+    line: Line<'a>,
     item_index: usize,
     glyph_start: usize,
     offset: f32,
 }
 
-impl<'a, B: Brush> Iterator for GlyphRunIter<'a, B> {
-    type Item = PositionedLayoutItem<'a, B>;
+impl<'a> Iterator for GlyphRunIter<'a> {
+    type Item = PositionedLayoutItem<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {

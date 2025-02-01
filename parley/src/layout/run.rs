@@ -6,9 +6,9 @@ use super::{
     Synthesis,
 };
 
-impl<'a, B: Brush> Run<'a, B> {
+impl<'a> Run<'a> {
     pub(crate) fn new(
-        layout: &'a Layout<B>,
+        layout: &'a Layout,
         line_index: u32,
         index: u32,
         data: &'a RunData,
@@ -97,7 +97,7 @@ impl<'a, B: Brush> Run<'a, B> {
     }
 
     /// Returns the cluster at the specified index.
-    pub fn get(&self, index: usize) -> Option<Cluster<'a, B>> {
+    pub fn get(&self, index: usize) -> Option<Cluster<'a>> {
         let range = self
             .line_data
             .map(|d| &d.cluster_range)
@@ -112,7 +112,7 @@ impl<'a, B: Brush> Run<'a, B> {
     }
 
     /// Returns an iterator over the clusters in logical order.
-    pub fn clusters(&'a self) -> impl Iterator<Item = Cluster<'a, B>> + 'a + Clone {
+    pub fn clusters(&'a self) -> impl Iterator<Item = Cluster<'a>> + 'a + Clone {
         let range = self.cluster_range();
         Clusters {
             run: self,
@@ -154,7 +154,7 @@ impl<'a, B: Brush> Run<'a, B> {
     }
 
     /// Returns an iterator over the clusters in visual order.
-    pub fn visual_clusters(&'a self) -> impl Iterator<Item = Cluster<'a, B>> + 'a + Clone {
+    pub fn visual_clusters(&'a self) -> impl Iterator<Item = Cluster<'a>> + 'a + Clone {
         let range = self.cluster_range();
         Clusters {
             run: self,
@@ -164,13 +164,13 @@ impl<'a, B: Brush> Run<'a, B> {
     }
 }
 
-struct Clusters<'a, B: Brush> {
-    run: &'a Run<'a, B>,
+struct Clusters<'a> {
+    run: &'a Run<'a>,
     range: Range<usize>,
     rev: bool,
 }
 
-impl<B: Brush> Clone for Clusters<'_, B> {
+impl Clone for Clusters<'_> {
     fn clone(&self) -> Self {
         Self {
             run: self.run,
@@ -180,8 +180,8 @@ impl<B: Brush> Clone for Clusters<'_, B> {
     }
 }
 
-impl<'a, B: Brush> Iterator for Clusters<'a, B> {
-    type Item = Cluster<'a, B>;
+impl<'a> Iterator for Clusters<'a> {
+    type Item = Cluster<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let index = if self.rev {
