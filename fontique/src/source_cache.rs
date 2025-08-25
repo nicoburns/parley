@@ -77,6 +77,14 @@ impl SourceCache {
         }
     }
 
+    /// Turns an unshared cache into a shared cache that is suitable for multi-threaded use.
+    #[cfg(feature = "std")]
+    pub fn make_shared(&mut self) {
+        if self.shared.is_none() {
+            self.shared = Some(Arc::new(Mutex::new(Shared::from_local(&self.cache))));
+        }
+    }
+
     /// Returns the [blob] for the given font data, attempting to load
     /// it from the file system if not already present.
     ///
@@ -159,6 +167,17 @@ struct Shared {
 
 #[cfg(feature = "std")]
 impl Shared {
+    /// Bootstrap a shared cache from a local one
+    fn from_local(unshared: &HashMap<SourceId, Entry<Blob<u8>>>) -> Self {
+        let shared_cache: HashMap<SourceId, Entry<WeakBlob<u8>>> = unshared
+            .iter()
+            .map(|(key, value)| (*key, value.into()))
+            .collect();
+        Self {
+            cache: shared_cache,
+        }
+    }
+
     pub fn get(&mut self, id: SourceId, path: &Path) -> Option<Blob<u8>> {
         use hashbrown::hash_map::Entry as HashEntry;
         match self.cache.entry(id) {
@@ -211,6 +230,18 @@ enum Entry<T> {
 struct EntryData<T> {
     font_data: T,
     serial: u64,
+}
+
+impl<T> From<&Entry<Blob<T>>> for Entry<WeakBlob<T>> {
+    fn from(value: &Entry<Blob<T>>) -> Self {
+        match value {
+            Entry::Loaded(entry_data) => Entry::Loaded(EntryData {
+                font_data: entry_data.font_data.downgrade(),
+                serial: entry_data.serial,
+            }),
+            Entry::Failed => Entry::Failed,
+        }
+    }
 }
 
 #[cfg(feature = "std")]

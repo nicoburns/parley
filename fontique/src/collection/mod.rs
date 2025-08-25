@@ -84,6 +84,10 @@ impl Collection {
         }
     }
 
+    pub fn make_shared(&mut self) {
+        self.inner.make_shared();
+    }
+
     /// Returns an iterator over all available family names in the collection.
     ///
     /// If `fontique` was compiled with the `"system"` feature, then it will
@@ -237,6 +241,15 @@ impl Inner {
             shared,
             shared_version: 0,
             fallback_cache: FallbackCache::default(),
+        }
+    }
+
+    pub fn make_shared(&mut self) {
+        if self.shared.is_none() {
+            self.shared = Some(Arc::new(Shared {
+                data: Mutex::new(core::mem::take(&mut self.data)),
+                version: AtomicCounter::new(self.shared_version),
+            }));
         }
     }
 
