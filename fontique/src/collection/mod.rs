@@ -84,6 +84,10 @@ impl Collection {
         }
     }
 
+    pub fn make_shared(&mut self) {
+        self.inner.make_shared();
+    }
+
     /// Returns an iterator over all available family names in the collection.
     ///
     /// If `fontique` was compiled with the `"system"` feature, then it will
@@ -206,6 +210,11 @@ impl Collection {
     pub fn clear(&mut self) {
         self.inner.clear();
     }
+
+    /// Updates the font context so that it is aware of any new fonts that have been registered
+    pub fn sync_shared(&mut self) {
+        self.inner.sync_shared()
+    }
 }
 
 impl Default for Collection {
@@ -240,11 +249,19 @@ impl Inner {
         }
     }
 
+    pub fn make_shared(&mut self) {
+        if self.shared.is_none() {
+            self.shared = Some(Arc::new(Shared {
+                data: Mutex::new(core::mem::take(&mut self.data)),
+                version: AtomicCounter::new(self.shared_version),
+            }));
+        }
+    }
+
     /// Returns an iterator over all available family names in the collection.
     ///
     /// This includes both system and registered fonts.
     pub fn family_names(&mut self) -> impl Iterator<Item = &str> + '_ + Clone {
-        self.sync_shared();
         FamilyNames {
             ours: self.data.family_names.iter(),
             system: self.system.as_ref().map(|sys| sys.family_names.iter()),
@@ -254,7 +271,6 @@ impl Inner {
 
     /// Returns the family identifier for the given family name.
     pub fn family_id(&mut self, name: &str) -> Option<FamilyId> {
-        self.sync_shared();
         self.data
             .family_names
             .get(name)
@@ -268,7 +284,6 @@ impl Inner {
 
     /// Returns the family name for the given family identifier.
     pub fn family_name(&mut self, id: FamilyId) -> Option<&str> {
-        self.sync_shared();
         self.data
             .family_names
             .get_by_id(id)
@@ -282,7 +297,6 @@ impl Inner {
 
     /// Returns the family object for the given family identifier.
     pub fn family(&mut self, id: FamilyId) -> Option<FamilyInfo> {
-        self.sync_shared();
         if let Some(family) = self.data.families.get(&id) {
             family.as_ref().cloned()
         } else {
@@ -316,7 +330,6 @@ impl Inner {
         &mut self,
         family: GenericFamily,
     ) -> impl Iterator<Item = FamilyId> + '_ + Clone {
-        self.sync_shared();
         GenericFamilies {
             ours: self.data.generic_families.get(family).iter().copied(),
             system: self
@@ -383,7 +396,6 @@ impl Inner {
         let script = selector.script();
         let lang_key = selector.locale();
         if self.fallback_cache.script != Some(script) || self.fallback_cache.language != lang_key {
-            self.sync_shared();
             self.fallback_cache.reset();
             #[cfg(feature = "system")]
             if let Some(families) = self.data.fallbacks.get(selector) {
@@ -513,7 +525,7 @@ impl Inner {
         self.data.clear();
     }
 
-    fn sync_shared(&mut self) {
+    pub fn sync_shared(&mut self) {
         #[cfg(feature = "std")]
         if let Some(shared) = &self.shared {
             let version = shared.version.load(Ordering::Acquire);

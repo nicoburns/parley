@@ -3,7 +3,9 @@
 
 use fontique::Collection;
 
+use fontique::CollectionOptions;
 use fontique::SourceCache;
+use fontique::SourceCacheOptions;
 
 /// A font database/cache (wrapper around a Fontique [`Collection`] and [`SourceCache`]).
 ///
@@ -18,5 +20,25 @@ impl FontContext {
     /// Create a new `FontContext`, discovering system fonts if available.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Create a new **shared** `FontContext`, discovering system fonts if available.
+    pub fn shared() -> Self {
+        Self {
+            collection: Collection::new(CollectionOptions {
+                shared: true,
+                system_fonts: true,
+            }),
+            source_cache: SourceCache::new(SourceCacheOptions { shared: true }),
+        }
+    }
+
+    pub fn sync_shared(&mut self) {
+        self.collection.sync_shared()
+    }
+
+    pub fn make_shared(&mut self) {
+        self.collection.make_shared();
+        self.source_cache.make_shared();
     }
 }
