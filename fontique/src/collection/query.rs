@@ -3,7 +3,7 @@
 
 //! Query support.
 
-use crate::{Charmap, CharmapIndex};
+use crate::{Charmap, CharmapIndex, FontId};
 
 use super::super::{Collection, SourceCache};
 
@@ -136,7 +136,7 @@ impl<'a> Query<'a> {
                 false,
                 self.source_cache,
             ) {
-                best_index = Some(font.family.1);
+                best_index = Some(font.id.index());
                 if f(font) == QueryStatus::Stop {
                     return;
                 }
@@ -214,7 +214,7 @@ impl From<GenericFamily> for QueryFamily<'static> {
 #[derive(Clone, Debug)]
 pub struct QueryFont {
     /// Family identifier and index of the font in the family font list.
-    pub family: (FamilyId, usize),
+    pub id: FontId,
     /// Blob containing the font data.
     pub blob: Blob<u8>,
     /// Index of a font in a font collection (`ttc`) file.
@@ -257,7 +257,7 @@ fn load_font<'a>(
             let synthesis =
                 font_info.synthesis(attributes.width, attributes.style, attributes.weight);
             *status = Entry::Ok(QueryFont {
-                family: (family.id(), family_index),
+                id: FontId::new(family.id(), family_index),
                 blob: blob.clone(),
                 index: blob_index,
                 synthesis,

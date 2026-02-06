@@ -21,7 +21,7 @@ use super::{
     generic::GenericFamilyMap,
     source::{SourceId, SourceInfo, SourceKind},
 };
-use crate::AtomicCounter;
+use crate::{AtomicCounter, FontId};
 use alloc::{string::String, sync::Arc, vec::Vec};
 use hashbrown::HashMap;
 use read_fonts::types::NameId;
@@ -119,6 +119,13 @@ impl Collection {
     /// Returns the family object for the given family identifier.
     pub fn family(&mut self, id: FamilyId) -> Option<FamilyInfo> {
         self.inner.family(id)
+    }
+
+    /// Returns the font object for the given font identifier.
+    pub fn font(&mut self, id: FontId) -> Option<&FontInfo> {
+        self.inner
+            .family_ref(id.family_id())
+            .and_then(|family| family.fonts().get(id.index()))
     }
 
     /// Returns the family object for the given name.
@@ -300,24 +307,25 @@ impl Inner {
     }
 
     /// Returns the family object for the given family identifier.
-    pub fn family(&mut self, id: FamilyId) -> Option<FamilyInfo> {
+    pub fn family_ref(&mut self, id: FamilyId) -> Option<&FamilyInfo> {
         self.sync_shared();
-        if let Some(family) = self.data.families.get(&id) {
-            family.as_ref().cloned()
-        } else {
-            #[cfg(feature = "system")]
-            if let Some(system) = &self.system {
-                let family = system.fonts.lock().unwrap().family(id);
-                self.data.families.insert(id, family.clone());
-                family
-            } else {
+        self.data
+            .families
+            .entry(id)
+            .or_insert_with(|| {
+                #[cfg(feature = "system")]
+                if let Some(system) = &self.system {
+                    return system.fonts.lock().unwrap().family(id);
+                }
+
                 None
-            }
-            #[cfg(not(feature = "system"))]
-            {
-                None
-            }
-        }
+            })
+            .as_ref()
+    }
+
+    /// Returns the family object for the given family identifier.
+    pub fn family(&mut self, id: FamilyId) -> Option<FamilyInfo> {
+        self.family_ref(id).cloned()
     }
 
     /// Returns the family object for the given name.

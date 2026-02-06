@@ -12,7 +12,7 @@ use smallvec::SmallVec;
 /// Unique identifier for a font family.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[repr(transparent)]
-pub struct FamilyId(u64);
+pub struct FamilyId(pub(crate) u64);
 
 impl FamilyId {
     /// Creates a new unique identifier.
