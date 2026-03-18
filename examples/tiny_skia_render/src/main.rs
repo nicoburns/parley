@@ -10,8 +10,9 @@
 #![expect(clippy::cast_possible_truncation, reason = "Deferred")]
 
 use parley::{
-    Alignment, AlignmentOptions, FontContext, FontWeight, GenericFamily, GlyphRun, InlineBox,
-    InlineBoxKind, Layout, LayoutContext, LineHeight, PositionedLayoutItem, StyleProperty,
+    Alignment, AlignmentBaseline, AlignmentOptions, BaselineShift, BaselineSource, FontContext,
+    FontWeight, GenericFamily, GlyphRun, InlineBox, InlineBoxKind, Layout, LayoutContext,
+    LineHeight, PositionedLayoutItem, StyleProperty,
 };
 use skrifa::{
     GlyphId, MetadataProvider, OutlineGlyph,
@@ -92,6 +93,10 @@ fn main() {
         index: 40,
         width: 50.0,
         height: 50.0,
+        alignment_baseline: AlignmentBaseline::default(),
+        baseline_shift: BaselineShift::default(),
+        baseline_source: BaselineSource::default(),
+        first_baseline: None,
     });
 
     // Build the builder into a Layout

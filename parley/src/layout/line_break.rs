@@ -17,7 +17,7 @@ use crate::layout::{
     LineMetrics, Run,
 };
 use crate::style::Brush;
-use crate::{InlineBoxKind, OverflowWrap, TextWrapMode};
+use crate::{AlignmentBaseline, BaselineShift, InlineBoxKind, OverflowWrap, TextWrapMode};
 
 use core::ops::Range;
 
@@ -914,60 +914,284 @@ impl<'a, B: Brush> BreakLines<'a, B> {
         if line.item_range.is_empty() {
             line.text_range = self.layout.data.text_len..self.layout.data.text_len;
         }
-        // Compute metrics for the line, but ignore trailing whitespace.
+        // Two-pass vertical alignment algorithm:
+        //
+        // Pass 0: Pre-compute whitespace properties, text ranges, advance, bidi,
+        //         and identify trailing whitespace (which doesn't contribute to metrics).
+        //
+        // Pass 1: Process baseline-relative items (everything except Top/Bottom).
+        //         Compute each item's baseline_offset and accumulate line ascent/descent
+        //         accounting for shifted positions.
+        //
+        // Pass 2: Process Top/Bottom items now that line metrics are finalized.
+
         let mut have_metrics = false;
         let mut needs_reorder = false;
-        for line_item in self.lines.line_items[line.item_range.clone()]
-            .iter_mut()
-            .rev()
-        {
+
+        // Index of the first trailing-whitespace-only text run (from the end).
+        // Items at or after this index are trailing whitespace and don't contribute to metrics.
+        let mut trailing_ws_start = line.item_range.end;
+
+        // Collect the line's x-height from text runs for use in inline box Middle alignment.
+        // CSS spec fallback for x-height is font_size * 0.5:
+        // https://www.w3.org/TR/css-inline-3/#baseline-synthesis-fonts
+        let mut line_x_height: Option<f32> = None;
+
+        // Pre-compute the "dominant baseline" ascent/descent from baseline-aligned text runs.
+        // This is needed for TextTop/TextBottom alignment, which must reference the final
+        // line metrics from unshifted runs rather than the still-accumulating metrics.
+        let mut dominant_ascent = 0.0_f32;
+        let mut dominant_descent = 0.0_f32;
+
+        // Pass 0: pre-compute per-item properties and find trailing whitespace boundary
+        for item_idx in line.item_range.clone() {
+            let line_item = &mut self.lines.line_items[item_idx];
             match line_item.kind {
                 LayoutItemKind::InlineBox => {
-                    let item = &self.layout.data.inline_boxes[line_item.index];
 
-                    // Advance is already computed in "commit line" for items
-                    if item.kind == InlineBoxKind::InFlow {
-                        // Default vertical alignment is to align the bottom of boxes with the text baseline.
-                        // This is equivalent to the entire height of the box being "ascent"
-                        line.metrics.ascent = line.metrics.ascent.max(item.height);
+                    // CHECK: should this be here?
 
-                        // Mark us as having seen non-whitespace content on this line
-                        have_metrics = true;
-                    }
+                    // let item = &self.layout.data.inline_boxes[line_item.index];
+
+                    // // Advance is already computed in "commit line" for items
+                    // if item.kind == InlineBoxKind::InFlow {
+                    //     // Default vertical alignment is to align the bottom of boxes with the text baseline.
+                    //     // This is equivalent to the entire height of the box being "ascent"
+                    //     line.metrics.ascent = line.metrics.ascent.max(item.height);
+
+                    //     // Mark us as having seen non-whitespace content on this line
+                    //     have_metrics = true;
+                    // }
                 }
                 LayoutItemKind::TextRun => {
                     line_item.compute_whitespace_properties(&self.layout.data);
 
-                    // Compute the text range for the line
-                    // Q: Can we not simplify this computation by assuming that items are in order?
                     line.text_range.end = line.text_range.end.max(line_item.text_range.end);
                     line.text_range.start = line.text_range.start.min(line_item.text_range.start);
 
-                    // Mark line as needing bidi re-ordering if it contains any runs with non-zero bidi level
-                    // (zero is the default level, so this is equivalent to marking lines that have multiple levels)
                     if line_item.bidi_level != 0 {
                         needs_reorder = true;
                     }
 
-                    // Compute the run's advance by summing the advances of its constituent clusters
                     line_item.advance = self.layout.data.clusters[line_item.cluster_range.clone()]
                         .iter()
                         .map(|c| c.advance)
                         .sum();
 
-                    // Ignore trailing whitespace for metrics computation
-                    // (we are iterating backwards so trailing whitespace comes first)
-                    if !have_metrics && line_item.is_whitespace {
+                    let run = &self.layout.data.runs[line_item.index];
+
+                    // Collect x-height from the first text run that has one
+                    if line_x_height.is_none() {
+                        line_x_height = Some(run.metrics.x_height.unwrap_or(run.font_size * 0.5));
+                    }
+
+                    // Accumulate dominant baseline metrics from baseline-aligned runs
+                    let (ab, bs) = get_run_alignment(line_item, &self.layout.data);
+                    if ab == AlignmentBaseline::Baseline && bs == BaselineShift::None {
+                        dominant_ascent = dominant_ascent.max(run.metrics.ascent);
+                        dominant_descent = dominant_descent.max(run.metrics.descent);
+                    }
+                }
+            }
+        }
+
+        // Fall back to 0 if there are no text runs on the line (e.g. boxes-only line)
+        let line_x_height = line_x_height.unwrap_or(0.0);
+
+        // Walk backwards to find trailing whitespace boundary
+        for item_idx in line.item_range.clone().rev() {
+            let line_item = &self.lines.line_items[item_idx];
+            match line_item.kind {
+                LayoutItemKind::InlineBox => break, // Inline box ends trailing whitespace
+                LayoutItemKind::TextRun => {
+                    if line_item.is_whitespace {
+                        trailing_ws_start = item_idx;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Pass 1: baseline-relative items (everything except Top/Bottom shift).
+        //
+        // Note on inline box metrics contribution: inline boxes position as
+        // y = baseline + offset - height, so box top = offset - height and
+        // box bottom = offset (relative to baseline). The effective ascent/descent
+        // formulas differ from text runs because boxes have a single height rather
+        // than separate ascent/descent, but the offset direction is consistent.
+        // TODO: When `first_baseline` is added to InlineBox, boxes will have
+        // separate "ascent" (first_baseline) and "descent" (height - first_baseline)
+        // portions, and these formulas will need updating.
+        for item_idx in line.item_range.clone() {
+            let is_trailing_ws = item_idx >= trailing_ws_start;
+            let line_item = &mut self.lines.line_items[item_idx];
+            match line_item.kind {
+                LayoutItemKind::InlineBox => {
+                    // CHECK: is_in_flow
+
+                    let item = &self.layout.data.inline_boxes[line_item.index];
+                    let is_line_relative = matches!(
+                        item.baseline_shift,
+                        BaselineShift::Top | BaselineShift::Bottom
+                    );
+
+                    // Compute alignment offset from alignment_baseline.
+                    //
+                    // For inline boxes, y = baseline + offset - height, so:
+                    //   box bottom = baseline + offset
+                    //   box center = baseline + offset - height/2
+                    //   box top    = baseline + offset - height
+                    //
+                    // When `first_baseline` is set, the box aligns its internal
+                    // baseline with the line baseline. The offset shifts so that
+                    // the box's internal baseline sits at the line baseline:
+                    //   offset = -(height - first_baseline)
+                    // which is equivalent to: the box top is at baseline - first_baseline.
+                    let box_ascent = item.first_baseline.unwrap_or(item.height);
+                    let box_descent = item.height - box_ascent;
+
+                    let align_offset = match item.alignment_baseline {
+                        // Baseline: align box's baseline with line baseline.
+                        // With first_baseline: offset so box_baseline = line_baseline
+                        // Without: bottom of box sits at baseline (offset = 0)
+                        AlignmentBaseline::Baseline => {
+                            if item.first_baseline.is_some() {
+                                -(item.height - box_ascent)
+                            } else {
+                                0.0
+                            }
+                        }
+                        AlignmentBaseline::TextTop => -(dominant_ascent - item.height),
+                        AlignmentBaseline::TextBottom => dominant_descent,
+                        // CSS middle: center the box at baseline - x_height/2.
+                        // offset = (height - x_height) / 2
+                        AlignmentBaseline::Middle => (item.height - line_x_height) / 2.0,
+                    };
+
+                    // Compute shift offset from baseline_shift.
+                    // Note: Inline boxes don't have associated font metrics, so Sub/Super
+                    // use hardcoded ratios of the box height. Once `first_baseline` is
+                    // supported, we could derive better values from the box's content.
+                    let shift_offset = match item.baseline_shift {
+                        BaselineShift::None => 0.0,
+                        BaselineShift::Sub => item.height * 0.25,
+                        BaselineShift::Super => -(item.height * 0.4),
+                        BaselineShift::Length(v) => -v,
+                        // Top/Bottom deferred to pass 2
+                        BaselineShift::Top | BaselineShift::Bottom => 0.0,
+                    };
+
+                    let offset = align_offset + shift_offset;
+                    line_item.baseline_offset = offset;
+
+                    // Contribute to line metrics (skip Top/Bottom — they're resolved in pass 2).
+                    // When first_baseline is set, box_ascent/box_descent split the height;
+                    // otherwise the entire height is ascent (box bottom at baseline).
+                    if !is_line_relative {
+                        let effective_ascent = (box_ascent - offset).max(0.0);
+                        let effective_descent = (box_descent + offset).max(0.0);
+                        line.metrics.ascent = line.metrics.ascent.max(effective_ascent);
+                        line.metrics.descent = line.metrics.descent.max(effective_descent);
+                    }
+
+                    have_metrics = true;
+                }
+                LayoutItemKind::TextRun => {
+                    let (alignment_baseline, baseline_shift) =
+                        get_run_alignment(line_item, &self.layout.data);
+                    let run = &self.layout.data.runs[line_item.index];
+                    let is_line_relative =
+                        matches!(baseline_shift, BaselineShift::Top | BaselineShift::Bottom);
+
+                    // Compute alignment offset from alignment_baseline.
+                    // TextTop/TextBottom use pre-computed dominant baseline metrics
+                    // rather than the still-accumulating line.metrics values.
+                    let align_offset = match alignment_baseline {
+                        AlignmentBaseline::Baseline => 0.0,
+                        AlignmentBaseline::TextTop => -(dominant_ascent - run.metrics.ascent),
+                        AlignmentBaseline::TextBottom => dominant_descent - run.metrics.descent,
+                        AlignmentBaseline::Middle => {
+                            // CSS spec fallback: font_size * 0.5
+                            // https://www.w3.org/TR/css-inline-3/#baseline-synthesis-fonts
+                            let x_height = run.metrics.x_height.unwrap_or(run.font_size * 0.5);
+                            -(x_height * 0.5)
+                        }
+                    };
+
+                    // Compute shift offset from baseline_shift.
+                    // Sub/Super use font-specific values from the OS/2 table when
+                    // available, falling back to heuristics based on run metrics.
+                    //
+                    // TODO: In the general case, baseline shifts accumulate through
+                    // the style tree. For example, a superscript within a superscript
+                    // should shift by the cumulative amount. This would require the
+                    // style resolution layer to propagate cumulative offsets.
+                    // See: https://github.com/linebender/parley/issues/291
+                    let shift_offset = match baseline_shift {
+                        BaselineShift::None => 0.0,
+                        BaselineShift::Sub => {
+                            run.metrics.subscript_offset.unwrap_or(run.metrics.descent)
+                        }
+                        BaselineShift::Super => -run
+                            .metrics
+                            .superscript_offset
+                            .unwrap_or(run.metrics.ascent * 0.4),
+                        BaselineShift::Length(v) => -v,
+                        // Deferred to pass 2
+                        BaselineShift::Top | BaselineShift::Bottom => 0.0,
+                    };
+
+                    let offset = align_offset + shift_offset;
+                    line_item.baseline_offset = offset;
+
+                    // Skip trailing whitespace for metrics contribution
+                    if is_trailing_ws {
                         continue;
                     }
 
-                    // Compute the run's vertical metrics
-                    let run = &self.layout.data.runs[line_item.index];
-                    line.metrics.ascent = line.metrics.ascent.max(run.metrics.ascent);
-                    line.metrics.descent = line.metrics.descent.max(run.metrics.descent);
+                    // Contribute to line metrics (skip Top/Bottom)
+                    if !is_line_relative {
+                        let effective_ascent = (run.metrics.ascent - offset).max(0.0);
+                        let effective_descent = (run.metrics.descent + offset).max(0.0);
+                        line.metrics.ascent = line.metrics.ascent.max(effective_ascent);
+                        line.metrics.descent = line.metrics.descent.max(effective_descent);
+                    }
 
-                    // Mark us as having seen non-whitespace content on this line
                     have_metrics = true;
+                }
+            }
+        }
+
+        // Pass 2: Top/Bottom items — position them relative to the finalized line box
+        for item_idx in line.item_range.clone() {
+            let line_item = &mut self.lines.line_items[item_idx];
+            match line_item.kind {
+                LayoutItemKind::InlineBox => {
+                    let item = &self.layout.data.inline_boxes[line_item.index];
+                    match item.baseline_shift {
+                        BaselineShift::Top => {
+                            line_item.baseline_offset = -(line.metrics.ascent - item.height);
+                        }
+                        BaselineShift::Bottom => {
+                            line_item.baseline_offset = line.metrics.descent;
+                        }
+                        _ => {}
+                    }
+                }
+                LayoutItemKind::TextRun => {
+                    let (_alignment_baseline, baseline_shift) =
+                        get_run_alignment(line_item, &self.layout.data);
+                    let run = &self.layout.data.runs[line_item.index];
+                    match baseline_shift {
+                        BaselineShift::Top => {
+                            line_item.baseline_offset = -(line.metrics.ascent - run.metrics.ascent);
+                        }
+                        BaselineShift::Bottom => {
+                            line_item.baseline_offset = line.metrics.descent - run.metrics.descent;
+                        }
+                        _ => {}
+                    }
                 }
             }
         }
@@ -1039,6 +1263,7 @@ impl<'a, B: Brush> BreakLines<'a, B> {
                         index,
                         bidi_level: 0,
                         advance: 0.,
+                        baseline_offset: 0.0,
                         is_whitespace: false,
                         has_trailing_whitespace: false,
                         cluster_range: cluster..cluster,
@@ -1189,6 +1414,7 @@ fn commit_line<B: Brush>(
                     index: item.index,
                     bidi_level: item.bidi_level,
                     advance: inline_box.width,
+                    baseline_offset: 0.0,
 
                     // These properties are ignored for inline boxes. So we just put a dummy value.
                     is_whitespace: false,
@@ -1241,6 +1467,7 @@ fn commit_line<B: Brush>(
                     index: item.index,
                     bidi_level: run_data.bidi_level,
                     advance: 0.,
+                    baseline_offset: 0.0,
                     is_whitespace: false,
                     has_trailing_whitespace: false,
                     cluster_range,
@@ -1299,6 +1526,20 @@ fn commit_line<B: Brush>(
     };
 
     true
+}
+
+/// Get the alignment baseline and baseline shift for a text run's `LineItemData`
+/// by looking up its first cluster's style.
+fn get_run_alignment<B: Brush>(
+    line_item: &LineItemData,
+    data: &LayoutData<B>,
+) -> (AlignmentBaseline, BaselineShift) {
+    if line_item.cluster_range.is_empty() {
+        return (AlignmentBaseline::Baseline, BaselineShift::None);
+    }
+    let cluster = &data.clusters[line_item.cluster_range.start];
+    let style = &data.styles[cluster.style_index as usize];
+    (style.alignment_baseline, style.baseline_shift)
 }
 
 /// Reorder items within line according to the bidi levels of the items

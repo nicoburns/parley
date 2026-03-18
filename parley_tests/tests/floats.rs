@@ -58,6 +58,10 @@ fn float_simple() {
             index: fbox.text_index,
             width: 0.0,
             height: 0.0,
+            alignment_baseline: Default::default(),
+            baseline_shift: Default::default(),
+            baseline_source: Default::default(),
+            first_baseline: None,
         });
     }
 

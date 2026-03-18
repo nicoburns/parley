@@ -7,6 +7,7 @@ use crate::style::Brush;
 use crate::util::nearly_zero;
 use crate::{FontData, IndentOptions, InlineBoxKind, LineHeight, OverflowWrap, TextWrapMode};
 use core::ops::Range;
+use skrifa::raw::TableProvider;
 
 use alloc::vec::Vec;
 
@@ -188,6 +189,9 @@ pub(crate) struct LineItemData {
     pub(crate) bidi_level: u8,
     /// Advance (size in direction of text flow) for the run.
     pub(crate) advance: f32,
+
+    /// Offset from the line baseline for vertical alignment (positive = down).
+    pub(crate) baseline_offset: f32,
 
     // Fields that only apply to text runs (Ignored for boxes)
     // TODO: factor this out?
@@ -408,10 +412,24 @@ impl<B: Brush> LayoutData<B> {
                 index
             });
 
-        let metrics = {
+        let (metrics, subscript_offset, superscript_offset) = {
             let font = &self.fonts[font_index];
             let font_ref = skrifa::FontRef::from_index(font.data.as_ref(), font.index).unwrap();
-            skrifa::metrics::Metrics::new(&font_ref, skrifa::prelude::Size::new(font_size), coords)
+            let m = skrifa::metrics::Metrics::new(
+                &font_ref,
+                skrifa::prelude::Size::new(font_size),
+                coords,
+            );
+            let scale = font_size / m.units_per_em as f32;
+            // Read subscript/superscript offsets from the OS/2 table
+            let os2 = font_ref.os2().ok();
+            let sub_off = os2
+                .as_ref()
+                .map(|t| t.y_subscript_y_offset() as f32 * scale);
+            let sup_off = os2
+                .as_ref()
+                .map(|t| t.y_superscript_y_offset() as f32 * scale);
+            (m, sub_off, sup_off)
         };
         let units_per_em = metrics.units_per_em as f32;
 
@@ -452,6 +470,8 @@ impl<B: Brush> LayoutData<B> {
                 line_height,
                 x_height: metrics.x_height,
                 cap_height: metrics.cap_height,
+                subscript_offset,
+                superscript_offset,
             }
         };
 
