@@ -21,7 +21,10 @@ use objc2_foundation::{
     NSSearchPathDirectory, NSSearchPathDomainMask, NSSearchPathForDirectoriesInDomains,
 };
 use parlance::Script;
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    time::Instant,
+};
 
 const DEFAULT_GENERIC_FAMILIES: &[(GenericFamily, &[&str])] = &[
     (GenericFamily::Serif, &["Times", "Times New Roman"]),
@@ -90,11 +93,20 @@ impl SystemFonts {
 /// Discover system fonts by combining CoreText enumeration with a directory scan of all
 /// Library/Fonts paths, then index them through the shared scan pipeline.
 fn scan_system_fonts() -> Option<scan::ScannedCollection> {
+    let mut start = Instant::now();
+
     // SAFETY: Calls into CoreText. If anything fails we return None and use the fallback scan.
     let collection = unsafe { CTFontCollection::from_available_fonts(None) };
     let descriptors = unsafe { collection.matching_font_descriptors()? };
     let descriptors: CFRetained<CFArray<CTFontDescriptor>> =
         unsafe { CFRetained::cast_unchecked(descriptors) };
+
+    let time = Instant::now();
+    std::println!(
+        "Got descriptors in {}ms",
+        time.duration_since(start).as_millis()
+    );
+    start = time;
 
     // Collect unique font file paths to avoid redundant scanning.
     let mut paths: HashSet<PathBuf> = HashSet::new();
@@ -127,15 +139,34 @@ fn scan_system_fonts() -> Option<scan::ScannedCollection> {
         }
     }
 
+    let time = Instant::now();
+    std::println!(
+        "Iter descriptors in {}ms",
+        time.duration_since(start).as_millis()
+    );
+    start = time;
+
     // Apple hides certain fonts from CTFontCollection (notably SFNS.ttf, the San Francisco
     // system UI font). Scanning Library/Fonts directories catches what CoreText omits.
     paths.extend(library_font_files());
+
+    let time = Instant::now();
+    std::println!(
+        "Enumerate library_font_files in {}ms",
+        time.duration_since(start).as_millis()
+    );
+    start = time;
 
     if paths.is_empty() {
         return None;
     }
 
-    Some(scan::ScannedCollection::from_paths(paths.iter(), 0))
+    let res = Some(scan::ScannedCollection::from_paths(paths.iter(), 0));
+
+    let time = Instant::now();
+    std::println!("Scan paths in {}ms", time.duration_since(start).as_millis());
+
+    res
 }
 
 fn library_font_files() -> Vec<PathBuf> {

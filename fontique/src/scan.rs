@@ -5,6 +5,9 @@
 
 #![allow(dead_code, unused_imports)]
 
+#[cfg(feature = "std")]
+use std::{borrow::ToOwned, path::PathBuf, time::Instant};
+
 use super::{
     family::{FamilyId, FamilyInfo},
     family_name::{FamilyName, FamilyNameMap},
@@ -13,6 +16,9 @@ use super::{
 use alloc::string::String;
 use alloc::vec;
 use hashbrown::HashMap;
+#[cfg(feature = "std")]
+use memmap2::Mmap;
+use rayon::prelude::*;
 use read_fonts::{
     FileRef, FontRef, TableProvider as _,
     tables::name,
@@ -66,9 +72,45 @@ pub fn scan_paths(
     max_depth: u32,
     mut f: impl FnMut(&ScannedFont<'_>),
 ) {
-    for path in paths {
-        scan_path_impl(path.as_ref(), max_depth, &mut f, 0);
+    let mut start = Instant::now();
+
+    let paths_iter = paths.into_iter();
+    let mut file_paths = Vec::with_capacity(paths_iter.size_hint().0);
+
+    for path in paths_iter {
+        scan_path_impl(&mut file_paths, path.as_ref(), max_depth, 0);
     }
+
+    let time = Instant::now();
+    std::println!("List files {}ms", time.duration_since(start).as_millis());
+    start = time;
+
+    file_paths.par_iter_mut().for_each(|(path, mmap)| {
+        let Ok(file) = std::fs::File::open(path) else {
+            return;
+        };
+        let Ok(mapped) = (unsafe { Mmap::map(&file) }) else {
+            return;
+        };
+        *mmap = Some(mapped);
+    });
+
+    let time = Instant::now();
+    std::println!("Mmap files in {}ms", time.duration_since(start).as_millis());
+    start = time;
+
+    for (path, mmap) in file_paths
+        .into_iter()
+        .filter(|(_path, mmap)| mmap.is_some())
+    {
+        scan_memory_impl(&mmap.unwrap(), Some(&path), &mut f);
+    }
+
+    let time = Instant::now();
+    std::println!(
+        "Parse fonts in {}ms",
+        time.duration_since(start).as_millis()
+    );
 }
 
 /// Scans a memory buffer and invokes the given function for each font
@@ -146,9 +188,9 @@ fn scan_collection(
 
 #[cfg(feature = "std")]
 fn scan_path_impl(
+    file_paths: &mut Vec<(PathBuf, Option<Mmap>)>,
     path: &Path,
     max_depth: u32,
-    f: &mut impl FnMut(&ScannedFont<'_>),
     depth: u32,
 ) -> Option<()> {
     let metadata = path.metadata().ok()?;
@@ -157,12 +199,10 @@ fn scan_path_impl(
             return None;
         }
         for entry in std::fs::read_dir(path).ok()?.filter_map(|entry| entry.ok()) {
-            scan_path_impl(entry.path().as_path(), max_depth, f, depth + 1);
+            scan_path_impl(file_paths, entry.path().as_path(), max_depth, depth + 1);
         }
     } else {
-        let file = std::fs::File::open(path).ok()?;
-        let mapped = unsafe { memmap2::Mmap::map(&file) }.ok()?;
-        scan_memory_impl(&mapped, Some(path), f);
+        file_paths.push((path.to_owned(), None));
     }
     Some(())
 }
