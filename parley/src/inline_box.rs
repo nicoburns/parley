@@ -27,7 +27,7 @@ pub struct InlineBox {
     /// as its baseline (giving separate "ascent" and "descent" portions). When `None`,
     /// falls back to aligning by the bottom of the box (the entire height is treated
     /// as ascent above the baseline). In Blitz, this is sourced from Taffy's layout output.
-    pub first_baseline: Option<f32>,
+    pub baseline: Option<f32>,
 }
 
 /// Whether a box is in-flow (takes up space in the layout) or out-of-flow (e.g. absolutely positioned)

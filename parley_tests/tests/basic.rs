@@ -73,7 +73,7 @@ fn placing_inboxes() {
             height: 10.0,
             alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
-            first_baseline: None,
+            baseline: None,
         });
         let mut layout = builder.build(text);
         layout.break_all_lines(None);
@@ -97,7 +97,7 @@ fn only_inboxes_wrap() {
             height: 10.0,
             alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
-            first_baseline: None,
+            baseline: None,
         });
     }
     let mut layout = builder.build(text);
@@ -122,7 +122,7 @@ fn full_width_inbox() {
             height: 10.0,
             alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
-            first_baseline: None,
+            baseline: None,
         });
         builder.push_inline_box(InlineBox {
             id: 1,
@@ -132,7 +132,7 @@ fn full_width_inbox() {
             height: 10.0,
             alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
-            first_baseline: None,
+            baseline: None,
         });
         builder.push_inline_box(InlineBox {
             id: 2,
@@ -142,7 +142,7 @@ fn full_width_inbox() {
             height: 10.0,
             alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
-            first_baseline: None,
+            baseline: None,
         });
         let mut layout = builder.build(text);
         layout.break_all_lines(Some(100.));
@@ -164,7 +164,7 @@ fn inbox_separated_by_whitespace() {
         height: 10.0,
         alignment_baseline: AlignmentBaseline::default(),
         baseline_shift: BaselineShift::default(),
-        first_baseline: None,
+        baseline: None,
     });
     builder.push_text(" ");
     builder.push_inline_box(InlineBox {
@@ -175,7 +175,7 @@ fn inbox_separated_by_whitespace() {
         height: 10.0,
         alignment_baseline: AlignmentBaseline::default(),
         baseline_shift: BaselineShift::default(),
-        first_baseline: None,
+        baseline: None,
     });
     builder.push_text(" ");
     builder.push_inline_box(InlineBox {
@@ -186,7 +186,7 @@ fn inbox_separated_by_whitespace() {
         height: 10.0,
         alignment_baseline: AlignmentBaseline::default(),
         baseline_shift: BaselineShift::default(),
-        first_baseline: None,
+        baseline: None,
     });
     builder.push_text(" ");
     builder.push_inline_box(InlineBox {
@@ -197,7 +197,7 @@ fn inbox_separated_by_whitespace() {
         height: 10.0,
         alignment_baseline: AlignmentBaseline::default(),
         baseline_shift: BaselineShift::default(),
-        first_baseline: None,
+        baseline: None,
     });
     let (mut layout, _text) = builder.build();
     layout.break_all_lines(Some(100.));
@@ -482,7 +482,7 @@ fn inbox_content_width() {
             height: 10.0,
             alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
-            first_baseline: None,
+            baseline: None,
         });
         let mut layout = builder.build(text);
         let ContentWidths {
@@ -506,7 +506,7 @@ fn inbox_content_width() {
             height: 10.0,
             alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
-            first_baseline: None,
+            baseline: None,
         });
         let mut layout = builder.build(text);
         let ContentWidths {

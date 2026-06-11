@@ -209,7 +209,7 @@ pub fn build_rich_layout(
         height: 50.0,
         alignment_baseline: AlignmentBaseline::default(),
         baseline_shift: BaselineShift::default(),
-        first_baseline: None,
+        baseline: None,
     });
 
     let mut layout = builder.build(&config.text);

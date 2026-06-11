@@ -85,7 +85,7 @@ fn make_box(
         height,
         alignment_baseline,
         baseline_shift,
-        first_baseline: None,
+        baseline: None,
     }
 }
 

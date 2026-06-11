@@ -103,7 +103,7 @@ fn main() {
             height: 50.0,
             alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
-            first_baseline: None,
+            baseline: None,
         });
 
         builder.push_text(&text[40..50]);
@@ -116,7 +116,7 @@ fn main() {
             height: 30.0,
             alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
-            first_baseline: None,
+            baseline: None,
         });
 
         builder.push_text(&text[50..141]);
@@ -169,7 +169,7 @@ fn main() {
             height: 50.0,
             alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
-            first_baseline: None,
+            baseline: None,
         });
         builder.push_inline_box(InlineBox {
             id: 1,
@@ -179,7 +179,7 @@ fn main() {
             height: 30.0,
             alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
-            first_baseline: None,
+            baseline: None,
         });
 
         // Build the builder into a Layout

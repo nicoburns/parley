@@ -28,7 +28,7 @@ fn out_of_flow_box_has_no_effect_on_layout() {
         height: 9999.0,
         alignment_baseline: Default::default(),
         baseline_shift: Default::default(),
-        first_baseline: None,
+        baseline: None,
     });
     let layout_oof = builder_oof.build(text);
     let widths_oof = layout_oof.calculate_content_widths();

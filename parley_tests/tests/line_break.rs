@@ -104,7 +104,7 @@ fn break_by_length_with_inline_box() {
         height: 10.0,
         alignment_baseline: AlignmentBaseline::default(),
         baseline_shift: BaselineShift::default(),
-        first_baseline: None,
+        baseline: None,
     });
     let mut layout = builder.build(text);
 
@@ -134,7 +134,7 @@ fn break_by_length_multiple_inline_boxes() {
             height: 10.0,
             alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
-            first_baseline: None,
+            baseline: None,
         });
     }
     let mut layout = builder.build(text);

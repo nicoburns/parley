@@ -95,7 +95,7 @@ fn main() {
         height: 50.0,
         alignment_baseline: AlignmentBaseline::default(),
         baseline_shift: BaselineShift::default(),
-        first_baseline: None,
+        baseline: None,
     });
 
     // Build the builder into a Layout

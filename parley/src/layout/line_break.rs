@@ -1048,7 +1048,7 @@ impl<'a, B: Brush> BreakLines<'a, B> {
                     // the box's internal baseline sits at the line baseline:
                     //   offset = -(height - first_baseline)
                     // which is equivalent to: the box top is at baseline - first_baseline.
-                    let box_ascent = item.first_baseline.unwrap_or(item.height);
+                    let box_ascent = item.baseline.unwrap_or(item.height);
                     let box_descent = item.height - box_ascent;
 
                     let align_offset = match item.alignment_baseline {
@@ -1056,7 +1056,7 @@ impl<'a, B: Brush> BreakLines<'a, B> {
                         // With first_baseline: offset so box_baseline = line_baseline
                         // Without: bottom of box sits at baseline (offset = 0)
                         AlignmentBaseline::Baseline => {
-                            if item.first_baseline.is_some() {
+                            if item.baseline.is_some() {
                                 -(item.height - box_ascent)
                             } else {
                                 0.0

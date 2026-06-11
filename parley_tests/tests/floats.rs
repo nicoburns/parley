@@ -60,7 +60,7 @@ fn float_simple() {
             height: 0.0,
             alignment_baseline: Default::default(),
             baseline_shift: Default::default(),
-            first_baseline: None,
+            baseline: None,
         });
     }
 
