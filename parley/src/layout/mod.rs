@@ -44,9 +44,7 @@ pub use crate::editing::{Cursor, Selection};
 // TODO - Move the following to `style` module and submodules.
 
 use crate::style::Brush;
-use crate::{
-    AlignmentBaseline, BaselineShift, BaselineSource, LineHeight, OverflowWrap, TextWrapMode,
-};
+use crate::{AlignmentBaseline, BaselineShift, LineHeight, OverflowWrap, TextWrapMode};
 
 #[allow(clippy::partial_pub_fields)]
 /// Style properties.
@@ -68,8 +66,6 @@ pub struct Style<B: Brush> {
     pub(crate) alignment_baseline: AlignmentBaseline,
     /// How much to shift from the alignment baseline (CSS `baseline-shift`)
     pub(crate) baseline_shift: BaselineShift,
-    /// Which baseline set to use (CSS `baseline-source`)
-    pub(crate) baseline_source: BaselineSource,
     #[cfg(feature = "accesskit")]
     /// Locale if any, so we can set the corresponding AccessKit property
     pub(crate) locale: Option<fontique::Language>,

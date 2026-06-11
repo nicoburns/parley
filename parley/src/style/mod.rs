@@ -77,20 +77,6 @@ impl BaselineShift {
     }
 }
 
-/// Which baseline set (first or last) to use for alignment.
-///
-/// Corresponds to CSS `baseline-source` (CSS Inline Level 3).
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub enum BaselineSource {
-    /// Use the first baseline set (default for most inline elements).
-    #[default]
-    Auto,
-    /// Use the first baseline set.
-    First,
-    /// Use the last baseline set.
-    Last,
-}
-
 #[derive(Debug, Clone, Copy)]
 pub enum WhiteSpaceCollapse {
     Collapse,
@@ -192,8 +178,6 @@ pub enum StyleProperty<'a, B: Brush> {
     AlignmentBaseline(AlignmentBaseline),
     /// How much to shift from the alignment baseline (CSS `baseline-shift`).
     BaselineShift(BaselineShift),
-    /// Which baseline set to use (CSS `baseline-source`).
-    BaselineSource(BaselineSource),
 }
 
 /// Unresolved styles.
@@ -249,8 +233,6 @@ pub struct TextStyle<'family, 'settings, B: Brush> {
     pub alignment_baseline: AlignmentBaseline,
     /// How much to shift from the alignment baseline (CSS `baseline-shift`).
     pub baseline_shift: BaselineShift,
-    /// Which baseline set to use (CSS `baseline-source`).
-    pub baseline_source: BaselineSource,
 }
 
 impl<B: Brush> Default for TextStyle<'static, 'static, B> {
@@ -281,7 +263,6 @@ impl<B: Brush> Default for TextStyle<'static, 'static, B> {
             text_wrap_mode: TextWrapMode::default(),
             alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
-            baseline_source: BaselineSource::default(),
         }
     }
 }
@@ -337,11 +318,5 @@ impl<B: Brush> From<AlignmentBaseline> for StyleProperty<'_, B> {
 impl<B: Brush> From<BaselineShift> for StyleProperty<'_, B> {
     fn from(value: BaselineShift) -> Self {
         StyleProperty::BaselineShift(value)
-    }
-}
-
-impl<B: Brush> From<BaselineSource> for StyleProperty<'_, B> {
-    fn from(value: BaselineSource) -> Self {
-        StyleProperty::BaselineSource(value)
     }
 }

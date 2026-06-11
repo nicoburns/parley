@@ -11,9 +11,9 @@ use peniko::{Blob, color::palette};
 
 use super::utils::{ColorBrush, asserts::assert_eq_layout_data};
 use crate::{
-    AlignmentBaseline, BaselineShift, BaselineSource, FontContext, FontFamily, FontFeatures,
-    FontVariations, Layout, LayoutContext, LineHeight, OverflowWrap, RangedBuilder, StyleProperty,
-    StyleRunBuilder, TextStyle, TextWrapMode, TreeBuilder, WordBreak,
+    AlignmentBaseline, BaselineShift, FontContext, FontFamily, FontFeatures, FontVariations,
+    Layout, LayoutContext, LineHeight, OverflowWrap, RangedBuilder, StyleProperty, StyleRunBuilder,
+    TextStyle, TextWrapMode, TreeBuilder, WordBreak,
 };
 
 // TODO: `FONT_FAMILY_LIST`, `load_fonts`, and `create_font_context` are
@@ -257,7 +257,6 @@ fn create_root_style() -> TextStyle<'static, 'static, ColorBrush> {
         text_wrap_mode: TextWrapMode::Wrap,
         alignment_baseline: AlignmentBaseline::default(),
         baseline_shift: BaselineShift::default(),
-        baseline_source: BaselineSource::default(),
     }
 }
 

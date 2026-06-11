@@ -9,9 +9,8 @@
 use crate::test_name;
 use crate::util::{ColorBrush, TestEnv};
 use parley::{
-    Affinity, Alignment, AlignmentBaseline, AlignmentOptions, BaselineShift, BaselineSource,
-    BoundingBox, Brush, Cursor, InlineBox, InlineBoxKind, Layout, LineHeight, Selection,
-    StyleProperty,
+    Affinity, Alignment, AlignmentBaseline, AlignmentOptions, BaselineShift, BoundingBox, Brush,
+    Cursor, InlineBox, InlineBoxKind, Layout, LineHeight, Selection, StyleProperty,
 };
 use peniko::kurbo::Size;
 
@@ -115,7 +114,6 @@ fn build_layout<A: Into<Option<f32>>>(
         height: 5.0,
         alignment_baseline: AlignmentBaseline::default(),
         baseline_shift: BaselineShift::default(),
-        baseline_source: BaselineSource::default(),
         first_baseline: None,
     });
     builder.push_inline_box(InlineBox {
@@ -126,7 +124,6 @@ fn build_layout<A: Into<Option<f32>>>(
         height: 3.0,
         alignment_baseline: AlignmentBaseline::default(),
         baseline_shift: BaselineShift::default(),
-        baseline_source: BaselineSource::default(),
         first_baseline: None,
     });
 

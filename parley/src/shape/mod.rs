@@ -18,7 +18,7 @@ use crate::convert::script_to_harfrust;
 use crate::inline_box::InlineBox;
 use crate::lru_cache::LruCache;
 use crate::util::nearly_eq;
-use crate::{AlignmentBaseline, BaselineShift, BaselineSource};
+use crate::{AlignmentBaseline, BaselineShift};
 use crate::{FontData, convert};
 use fontique::Language;
 use icu_properties::props::Script;
@@ -62,7 +62,6 @@ struct Item {
     letter_spacing: f32,
     alignment_baseline: AlignmentBaseline,
     baseline_shift: BaselineShift,
-    baseline_source: BaselineSource,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -112,7 +111,6 @@ pub(crate) fn shape_text<'a, B: Brush>(
         letter_spacing: style.letter_spacing,
         alignment_baseline: style.alignment_baseline,
         baseline_shift: style.baseline_shift,
-        baseline_source: style.baseline_source,
     };
 
     let mut char_range = 0..0;
@@ -142,7 +140,6 @@ pub(crate) fn shape_text<'a, B: Brush>(
                 || !nearly_eq(style.word_spacing, item.word_spacing)
                 || style.alignment_baseline != item.alignment_baseline
                 || !style.baseline_shift.nearly_eq(item.baseline_shift)
-                || style.baseline_source != item.baseline_source
             {
                 break_run = true;
             }
@@ -197,7 +194,6 @@ pub(crate) fn shape_text<'a, B: Brush>(
             item.letter_spacing = style.letter_spacing;
             item.alignment_baseline = style.alignment_baseline;
             item.baseline_shift = style.baseline_shift;
-            item.baseline_source = style.baseline_source;
             text_range.start = text_range.end;
             char_range.start = char_range.end;
         }

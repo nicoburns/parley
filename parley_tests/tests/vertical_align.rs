@@ -6,8 +6,8 @@
 use crate::util::TestEnv;
 use crate::{test_name, util::ColorBrush};
 use parley::{
-    Alignment, AlignmentBaseline, AlignmentOptions, BaselineShift, BaselineSource, InlineBox,
-    InlineBoxKind, Layout, PositionedLayoutItem, StyleProperty,
+    Alignment, AlignmentBaseline, AlignmentOptions, BaselineShift, InlineBox, InlineBoxKind,
+    Layout, PositionedLayoutItem, StyleProperty,
 };
 
 /// Helper: build a single-line layout with the given text and inline boxes,
@@ -85,7 +85,6 @@ fn make_box(
         height,
         alignment_baseline,
         baseline_shift,
-        baseline_source: BaselineSource::default(),
         first_baseline: None,
     }
 }

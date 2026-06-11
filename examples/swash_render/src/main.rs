@@ -11,8 +11,8 @@ use image::{self, Pixel, Rgba, RgbaImage};
 use parley::layout::{Alignment, Glyph, GlyphRun, Layout, PositionedLayoutItem};
 use parley::style::{FontFamily, FontWeight, StyleProperty, TextStyle};
 use parley::{
-    AlignmentBaseline, AlignmentOptions, BaselineShift, BaselineSource, FontContext, InlineBox,
-    InlineBoxKind, LayoutContext, LineHeight,
+    AlignmentBaseline, AlignmentOptions, BaselineShift, FontContext, InlineBox, InlineBoxKind,
+    LayoutContext, LineHeight,
 };
 use std::fs::File;
 use swash::FontRef;
@@ -103,7 +103,6 @@ fn main() {
             height: 50.0,
             alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
-            baseline_source: BaselineSource::default(),
             first_baseline: None,
         });
 
@@ -117,7 +116,6 @@ fn main() {
             height: 30.0,
             alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
-            baseline_source: BaselineSource::default(),
             first_baseline: None,
         });
 
@@ -171,7 +169,6 @@ fn main() {
             height: 50.0,
             alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
-            baseline_source: BaselineSource::default(),
             first_baseline: None,
         });
         builder.push_inline_box(InlineBox {
@@ -182,7 +179,6 @@ fn main() {
             height: 30.0,
             alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
-            baseline_source: BaselineSource::default(),
             first_baseline: None,
         });
 
