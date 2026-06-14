@@ -6,8 +6,8 @@ use crate::{
     util::{ColorBrush, TestEnv},
 };
 use parley::{
-    Alignment, AlignmentBaseline, AlignmentOptions, BaselineShift, InlineBox, InlineBoxKind,
-    Layout, PositionedLayoutItem,
+    Alignment, AlignmentOptions, BaselineShift, InlineBox, InlineBoxKind, Layout,
+    PositionedLayoutItem,
 };
 
 #[test]
@@ -30,7 +30,6 @@ fn out_of_flow_box_has_no_effect_on_layout() {
         width: 9999.0,
         height: 9999.0,
         baseline: None,
-        alignment_baseline: AlignmentBaseline::default(),
         baseline_shift: BaselineShift::default(),
     });
     let layout_oof = builder_oof.build(text);

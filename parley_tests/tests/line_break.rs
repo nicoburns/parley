@@ -10,8 +10,8 @@ use crate::test_name;
 use crate::util::TestEnv;
 use parley::style::FontFamily;
 use parley::{
-    Alignment, AlignmentBaseline, AlignmentOptions, BaselineShift, InlineBox, InlineBoxKind,
-    PositionedLayoutItem, StyleProperty,
+    Alignment, AlignmentOptions, BaselineShift, InlineBox, InlineBoxKind, PositionedLayoutItem,
+    StyleProperty,
 };
 
 #[test]
@@ -103,7 +103,6 @@ fn break_by_length_with_inline_box() {
         width: 10.0,
         height: 10.0,
         baseline: None,
-        alignment_baseline: AlignmentBaseline::default(),
         baseline_shift: BaselineShift::default(),
     });
     let mut layout = builder.build(text);
@@ -133,7 +132,6 @@ fn break_by_length_multiple_inline_boxes() {
             width: 10.0,
             height: 10.0,
             baseline: None,
-            alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
         });
     }

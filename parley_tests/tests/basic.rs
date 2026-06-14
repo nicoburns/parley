@@ -6,9 +6,9 @@
 use crate::util::TestEnv;
 use crate::{test_name, util::ColorBrush};
 use parley::{
-    Alignment, AlignmentBaseline, AlignmentOptions, BaselineShift, BreakReason, ContentWidths,
-    FontFamily, InlineBox, InlineBoxKind, Layout, LineHeight, PositionedLayoutItem, StyleProperty,
-    TextStyle, WhiteSpaceCollapse,
+    Alignment, AlignmentOptions, BaselineShift, BreakReason, ContentWidths, FontFamily, InlineBox,
+    InlineBoxKind, Layout, LineHeight, PositionedLayoutItem, StyleProperty, TextStyle,
+    WhiteSpaceCollapse,
 };
 use peniko::color::{AlphaColor, Srgb, palette};
 use peniko::kurbo::Size;
@@ -72,7 +72,6 @@ fn placing_inboxes() {
             width: 10.0,
             height: 10.0,
             baseline: None,
-            alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
         });
         let mut layout = builder.build(text);
@@ -96,7 +95,6 @@ fn only_inboxes_wrap() {
             width: 10.0,
             height: 10.0,
             baseline: None,
-            alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
         });
     }
@@ -121,7 +119,6 @@ fn full_width_inbox() {
             width: 10.,
             height: 10.0,
             baseline: None,
-            alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
         });
         builder.push_inline_box(InlineBox {
@@ -131,7 +128,6 @@ fn full_width_inbox() {
             width,
             height: 10.0,
             baseline: None,
-            alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
         });
         builder.push_inline_box(InlineBox {
@@ -141,7 +137,6 @@ fn full_width_inbox() {
             width,
             height: 10.0,
             baseline: None,
-            alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
         });
         let mut layout = builder.build(text);
@@ -163,7 +158,6 @@ fn inbox_separated_by_whitespace() {
         width: 10.,
         height: 10.0,
         baseline: None,
-        alignment_baseline: AlignmentBaseline::default(),
         baseline_shift: BaselineShift::default(),
     });
     builder.push_text(" ");
@@ -174,7 +168,6 @@ fn inbox_separated_by_whitespace() {
         width: 10.0,
         height: 10.0,
         baseline: None,
-        alignment_baseline: AlignmentBaseline::default(),
         baseline_shift: BaselineShift::default(),
     });
     builder.push_text(" ");
@@ -185,7 +178,6 @@ fn inbox_separated_by_whitespace() {
         width: 10.0,
         height: 10.0,
         baseline: None,
-        alignment_baseline: AlignmentBaseline::default(),
         baseline_shift: BaselineShift::default(),
     });
     builder.push_text(" ");
@@ -196,7 +188,6 @@ fn inbox_separated_by_whitespace() {
         width: 10.0,
         height: 10.0,
         baseline: None,
-        alignment_baseline: AlignmentBaseline::default(),
         baseline_shift: BaselineShift::default(),
     });
     let (mut layout, _text) = builder.build();
@@ -481,7 +472,6 @@ fn inbox_content_width() {
             width: 100.0,
             height: 10.0,
             baseline: None,
-            alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
         });
         let mut layout = builder.build(text);
@@ -505,7 +495,6 @@ fn inbox_content_width() {
             width: 10.0,
             height: 10.0,
             baseline: None,
-            alignment_baseline: AlignmentBaseline::default(),
             baseline_shift: BaselineShift::default(),
         });
         let mut layout = builder.build(text);
