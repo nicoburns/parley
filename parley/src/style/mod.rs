@@ -68,6 +68,40 @@ impl LineHeight {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum AlignmentBaseline {
+    #[default]
+    Baseline,
+    Middle,
+    TextBottom,
+    TextTop,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum BaselineShift {
+    None,
+    Subscript,
+    Superscript,
+    Top,
+    Bottom,
+    Absolute(f32),
+}
+
+impl Default for BaselineShift {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
+impl BaselineShift {
+    pub(crate) fn scale(self, scale: f32) -> Self {
+        match self {
+            Self::Absolute(value) => Self::Absolute(value * scale),
+            value => value,
+        }
+    }
+}
+
 /// Properties that define a style.
 #[derive(Clone, PartialEq, Debug)]
 pub enum StyleProperty<'a, B: Brush> {
@@ -107,6 +141,10 @@ pub enum StyleProperty<'a, B: Brush> {
     StrikethroughBrush(Option<B>),
     /// Line height.
     LineHeight(LineHeight),
+    /// Alignment baseline.
+    AlignmentBaseline(AlignmentBaseline),
+    /// Baseline shift.
+    BaselineShift(BaselineShift),
     /// Extra spacing between words.
     WordSpacing(f32),
     /// Extra spacing between letters.
@@ -158,6 +196,10 @@ pub struct TextStyle<'family, 'settings, B: Brush> {
     pub strikethrough_brush: Option<B>,
     /// Line height.
     pub line_height: LineHeight,
+    /// Alignment baseline.
+    pub alignment_baseline: AlignmentBaseline,
+    /// Baseline shift.
+    pub baseline_shift: BaselineShift,
     /// Extra spacing between words.
     pub word_spacing: f32,
     /// Extra spacing between letters.
@@ -191,6 +233,8 @@ impl<B: Brush> Default for TextStyle<'static, 'static, B> {
             strikethrough_size: None,
             strikethrough_brush: None,
             line_height: LineHeight::default(),
+            alignment_baseline: AlignmentBaseline::default(),
+            baseline_shift: BaselineShift::default(),
             word_spacing: 0.0,
             letter_spacing: 0.0,
             word_break: WordBreak::default(),
@@ -239,5 +283,17 @@ impl<B: Brush> From<GenericFamily> for StyleProperty<'_, B> {
 impl<B: Brush> From<LineHeight> for StyleProperty<'_, B> {
     fn from(value: LineHeight) -> Self {
         StyleProperty::LineHeight(value)
+    }
+}
+
+impl<B: Brush> From<AlignmentBaseline> for StyleProperty<'_, B> {
+    fn from(value: AlignmentBaseline) -> Self {
+        StyleProperty::AlignmentBaseline(value)
+    }
+}
+
+impl<B: Brush> From<BaselineShift> for StyleProperty<'_, B> {
+    fn from(value: BaselineShift) -> Self {
+        StyleProperty::BaselineShift(value)
     }
 }

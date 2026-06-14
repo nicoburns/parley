@@ -13,8 +13,9 @@ use std::time::Instant;
 
 use parley::fontique::Blob;
 use parley::{
-    Alignment, AlignmentOptions, FontContext, FontFamily, FontWeight, GenericFamily, InlineBox,
-    InlineBoxKind, Layout, LayoutContext, LineHeight, StyleProperty,
+    Alignment, AlignmentBaseline, AlignmentOptions, BaselineShift, FontContext, FontFamily,
+    FontWeight, GenericFamily, InlineBox, InlineBoxKind, Layout, LayoutContext, LineHeight,
+    StyleProperty,
 };
 use peniko::Color;
 
@@ -207,6 +208,8 @@ pub fn build_rich_layout(
         width: 50.0,
         height: 50.0,
         baseline: None,
+        alignment_baseline: AlignmentBaseline::default(),
+        baseline_shift: BaselineShift::default(),
     });
 
     let mut layout = builder.build(&config.text);

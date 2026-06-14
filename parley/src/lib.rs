@@ -26,8 +26,9 @@
 //!
 //! ```rust
 //! use parley::{
-//!    Alignment, AlignmentOptions, FontContext, FontWeight, InlineBox, InlineBoxKind, Layout,
-//!    LayoutContext, LineHeight, PositionedLayoutItem, StyleProperty,
+//!    Alignment, AlignmentBaseline, AlignmentOptions, BaselineShift, FontContext, FontWeight,
+//!    InlineBox, InlineBoxKind, Layout, LayoutContext, LineHeight, PositionedLayoutItem,
+//!    StyleProperty,
 //! };
 //!
 //! // Create a FontContext (font database) and LayoutContext (scratch space).
@@ -47,7 +48,7 @@
 //! builder.push(StyleProperty::FontWeight(FontWeight::new(600.0)), 0..4);
 //!
 //! // Add a box to be laid out inline with the text
-//! builder.push_inline_box(InlineBox { id: 0, kind: InlineBoxKind::InFlow, index: 5, width: 50.0, height: 50.0, baseline: None });
+//! builder.push_inline_box(InlineBox { id: 0, kind: InlineBoxKind::InFlow, index: 5, width: 50.0, height: 50.0, baseline: None, alignment_baseline: AlignmentBaseline::default(), baseline_shift: BaselineShift::default() });
 //!
 //! // Build the builder into a Layout
 //! let mut layout: Layout<()> = builder.build(&TEXT);

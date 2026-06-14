@@ -11,8 +11,8 @@ pub(crate) use range::RangedStyleBuilder;
 use alloc::{vec, vec::Vec};
 
 use super::style::{
-    Brush, FontFamily, FontFamilyName, FontFeature, FontFeatures, FontStyle, FontVariation,
-    FontVariations, FontWeight, FontWidth, StyleProperty,
+    AlignmentBaseline, BaselineShift, Brush, FontFamily, FontFamilyName, FontFeature, FontFeatures,
+    FontStyle, FontVariation, FontVariations, FontWeight, FontWidth, StyleProperty,
 };
 use crate::font::FontContext;
 use crate::style::TextStyle;
@@ -161,6 +161,8 @@ impl ResolveContext {
             StyleProperty::StrikethroughSize(value) => StrikethroughSize(value.map(|x| x * scale)),
             StyleProperty::StrikethroughBrush(value) => StrikethroughBrush(value.clone()),
             StyleProperty::LineHeight(value) => LineHeight(value.scale(scale)),
+            StyleProperty::AlignmentBaseline(value) => AlignmentBaseline(*value),
+            StyleProperty::BaselineShift(value) => BaselineShift(value.scale(scale)),
             StyleProperty::WordSpacing(value) => WordSpacing(*value * scale),
             StyleProperty::LetterSpacing(value) => LetterSpacing(*value * scale),
             StyleProperty::WordBreak(value) => WordBreak(*value),
@@ -198,6 +200,8 @@ impl ResolveContext {
                 brush: raw_style.strikethrough_brush.clone(),
             },
             line_height: raw_style.line_height.scale(scale),
+            alignment_baseline: raw_style.alignment_baseline,
+            baseline_shift: raw_style.baseline_shift.scale(scale),
             word_spacing: raw_style.word_spacing * scale,
             letter_spacing: raw_style.letter_spacing * scale,
             word_break: raw_style.word_break,
@@ -377,6 +381,10 @@ pub(crate) enum ResolvedProperty<B: Brush> {
     StrikethroughBrush(Option<B>),
     /// Line height.
     LineHeight(LineHeight),
+    /// Alignment baseline.
+    AlignmentBaseline(AlignmentBaseline),
+    /// Baseline shift.
+    BaselineShift(BaselineShift),
     /// Extra spacing between words.
     WordSpacing(f32),
     /// Extra spacing between letters.
@@ -416,6 +424,10 @@ pub(crate) struct ResolvedStyle<B: Brush> {
     pub(crate) strikethrough: ResolvedDecoration<B>,
     /// Line height.
     pub(crate) line_height: LineHeight,
+    /// Alignment baseline.
+    pub(crate) alignment_baseline: AlignmentBaseline,
+    /// Baseline shift.
+    pub(crate) baseline_shift: BaselineShift,
     /// Extra spacing between words.
     pub(crate) word_spacing: f32,
     /// Extra spacing between letters.
@@ -451,6 +463,8 @@ impl<B: Brush> ResolvedStyle<B> {
             StrikethroughSize(value) => self.strikethrough.size = value,
             StrikethroughBrush(value) => self.strikethrough.brush = value,
             LineHeight(value) => self.line_height = value,
+            AlignmentBaseline(value) => self.alignment_baseline = value,
+            BaselineShift(value) => self.baseline_shift = value,
             WordSpacing(value) => self.word_spacing = value,
             LetterSpacing(value) => self.letter_spacing = value,
             WordBreak(value) => self.word_break = value,
@@ -480,6 +494,8 @@ impl<B: Brush> ResolvedStyle<B> {
             StrikethroughSize(value) => self.strikethrough.size == *value,
             StrikethroughBrush(value) => self.strikethrough.brush == *value,
             LineHeight(value) => self.line_height.nearly_eq(*value),
+            AlignmentBaseline(value) => self.alignment_baseline == *value,
+            BaselineShift(value) => self.baseline_shift == *value,
             WordSpacing(value) => nearly_eq(self.word_spacing, *value),
             LetterSpacing(value) => nearly_eq(self.letter_spacing, *value),
             WordBreak(value) => self.word_break == *value,

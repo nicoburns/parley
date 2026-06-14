@@ -6,8 +6,9 @@
 use crate::util::TestEnv;
 use crate::{test_name, util::ColorBrush};
 use parley::{
-    Alignment, AlignmentOptions, BreakReason, ContentWidths, FontFamily, InlineBox, InlineBoxKind,
-    Layout, LineHeight, PositionedLayoutItem, StyleProperty, TextStyle, WhiteSpaceCollapse,
+    Alignment, AlignmentBaseline, AlignmentOptions, BaselineShift, BreakReason, ContentWidths,
+    FontFamily, InlineBox, InlineBoxKind, Layout, LineHeight, PositionedLayoutItem, StyleProperty,
+    TextStyle, WhiteSpaceCollapse,
 };
 use peniko::color::{AlphaColor, Srgb, palette};
 use peniko::kurbo::Size;
@@ -71,6 +72,8 @@ fn placing_inboxes() {
             width: 10.0,
             height: 10.0,
             baseline: None,
+            alignment_baseline: AlignmentBaseline::default(),
+            baseline_shift: BaselineShift::default(),
         });
         let mut layout = builder.build(text);
         layout.break_all_lines(None);
@@ -93,6 +96,8 @@ fn only_inboxes_wrap() {
             width: 10.0,
             height: 10.0,
             baseline: None,
+            alignment_baseline: AlignmentBaseline::default(),
+            baseline_shift: BaselineShift::default(),
         });
     }
     let mut layout = builder.build(text);
@@ -116,6 +121,8 @@ fn full_width_inbox() {
             width: 10.,
             height: 10.0,
             baseline: None,
+            alignment_baseline: AlignmentBaseline::default(),
+            baseline_shift: BaselineShift::default(),
         });
         builder.push_inline_box(InlineBox {
             id: 1,
@@ -124,6 +131,8 @@ fn full_width_inbox() {
             width,
             height: 10.0,
             baseline: None,
+            alignment_baseline: AlignmentBaseline::default(),
+            baseline_shift: BaselineShift::default(),
         });
         builder.push_inline_box(InlineBox {
             id: 2,
@@ -132,6 +141,8 @@ fn full_width_inbox() {
             width,
             height: 10.0,
             baseline: None,
+            alignment_baseline: AlignmentBaseline::default(),
+            baseline_shift: BaselineShift::default(),
         });
         let mut layout = builder.build(text);
         layout.break_all_lines(Some(100.));
@@ -152,6 +163,8 @@ fn inbox_separated_by_whitespace() {
         width: 10.,
         height: 10.0,
         baseline: None,
+        alignment_baseline: AlignmentBaseline::default(),
+        baseline_shift: BaselineShift::default(),
     });
     builder.push_text(" ");
     builder.push_inline_box(InlineBox {
@@ -161,6 +174,8 @@ fn inbox_separated_by_whitespace() {
         width: 10.0,
         height: 10.0,
         baseline: None,
+        alignment_baseline: AlignmentBaseline::default(),
+        baseline_shift: BaselineShift::default(),
     });
     builder.push_text(" ");
     builder.push_inline_box(InlineBox {
@@ -170,6 +185,8 @@ fn inbox_separated_by_whitespace() {
         width: 10.0,
         height: 10.0,
         baseline: None,
+        alignment_baseline: AlignmentBaseline::default(),
+        baseline_shift: BaselineShift::default(),
     });
     builder.push_text(" ");
     builder.push_inline_box(InlineBox {
@@ -179,6 +196,8 @@ fn inbox_separated_by_whitespace() {
         width: 10.0,
         height: 10.0,
         baseline: None,
+        alignment_baseline: AlignmentBaseline::default(),
+        baseline_shift: BaselineShift::default(),
     });
     let (mut layout, _text) = builder.build();
     layout.break_all_lines(Some(100.));
@@ -462,6 +481,8 @@ fn inbox_content_width() {
             width: 100.0,
             height: 10.0,
             baseline: None,
+            alignment_baseline: AlignmentBaseline::default(),
+            baseline_shift: BaselineShift::default(),
         });
         let mut layout = builder.build(text);
         let ContentWidths {
@@ -484,6 +505,8 @@ fn inbox_content_width() {
             width: 10.0,
             height: 10.0,
             baseline: None,
+            alignment_baseline: AlignmentBaseline::default(),
+            baseline_shift: BaselineShift::default(),
         });
         let mut layout = builder.build(text);
         let ContentWidths {

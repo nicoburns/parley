@@ -1,6 +1,8 @@
 // Copyright 2024 the Parley Authors
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 
+use crate::style::{AlignmentBaseline, BaselineShift};
+
 /// A box to be laid out inline with text
 #[derive(PartialEq, Debug, Clone)]
 pub struct InlineBox {
@@ -18,6 +20,10 @@ pub struct InlineBox {
     pub height: f32,
     /// The baseline of the box in pixels, relative to the top of the box
     pub baseline: Option<f32>,
+    /// Alignment baseline.
+    pub alignment_baseline: AlignmentBaseline,
+    /// Baseline shift.
+    pub baseline_shift: BaselineShift,
 }
 
 /// Whether a box is in-flow (takes up space in the layout) or out-of-flow (e.g. absolutely positioned)
