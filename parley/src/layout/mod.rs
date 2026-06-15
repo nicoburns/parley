@@ -44,7 +44,7 @@ pub use crate::editing::{Cursor, Selection};
 // TODO - Move the following to `style` module and submodules.
 
 use crate::style::Brush;
-use crate::{LineHeight, OverflowWrap, TextWrapMode};
+use crate::{AlignmentBaseline, BaselineShift, LineHeight, OverflowWrap, TextWrapMode};
 
 #[allow(clippy::partial_pub_fields)]
 /// Style properties.
@@ -58,6 +58,10 @@ pub struct Style<B: Brush> {
     pub strikethrough: Option<Decoration<B>>,
     /// Partially resolved line height, either in in layout units or dependent on metrics
     pub(crate) line_height: LineHeight,
+    /// Which baseline of the run is aligned to the line's dominant baseline.
+    pub(crate) alignment_baseline: AlignmentBaseline,
+    /// Vertical shift applied to the run's baseline.
+    pub(crate) baseline_shift: BaselineShift,
     /// Per-cluster overflow-wrap setting
     pub(crate) overflow_wrap: OverflowWrap,
     /// Per-cluster text-wrap-mode setting

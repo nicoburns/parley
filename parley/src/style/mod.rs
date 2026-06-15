@@ -77,20 +77,15 @@ pub enum AlignmentBaseline {
     TextTop,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum BaselineShift {
+    #[default]
     None,
     Subscript,
     Superscript,
     Top,
     Bottom,
     Absolute(f32),
-}
-
-impl Default for BaselineShift {
-    fn default() -> Self {
-        Self::None
-    }
 }
 
 impl BaselineShift {

@@ -6,9 +6,10 @@ use crate::layout::data::BreakReason;
 use crate::layout::data::{LayoutItemKind, LineData};
 use crate::layout::glyph::Glyph;
 use crate::layout::layout::Layout;
+use crate::layout::line_break::vertical_offset;
 use crate::layout::run::Run;
 use crate::style::Brush;
-use crate::{InlineBox, InlineBoxKind};
+use crate::{AlignmentBaseline, InlineBox, InlineBoxKind};
 use core::ops::Range;
 
 /// Line in a text layout.
@@ -269,10 +270,20 @@ impl<'a, B: Brush> Iterator for GlyphRunIter<'a, B> {
                     if inline_box.kind == InlineBoxKind::InFlow {
                         self.offset += inline_box.width;
                     }
+                    let box_ascent = inline_box.baseline.unwrap_or(inline_box.height);
+                    let box_descent = inline_box.height - box_ascent;
+                    let offset = vertical_offset(
+                        AlignmentBaseline::Baseline,
+                        inline_box.baseline_shift,
+                        box_ascent,
+                        box_descent,
+                        inline_box.height,
+                        self.line.data.metrics.ascent,
+                        self.line.data.metrics.descent,
+                    );
                     return Some(PositionedLayoutItem::InlineBox(PositionedInlineBox {
                         x,
-                        y: self.line.data.metrics.baseline
-                            - inline_box.baseline.unwrap_or(inline_box.height),
+                        y: self.line.data.metrics.baseline + offset - box_ascent,
                         width: inline_box.width,
                         height: inline_box.height,
                         id: inline_box.id,
@@ -298,6 +309,18 @@ impl<'a, B: Brush> Iterator for GlyphRunIter<'a, B> {
                         self.glyph_start += glyph_count;
                         let offset = self.offset;
                         self.offset += advance;
+                        // Apply the run's per-style vertical alignment / baseline shift,
+                        // relative to the line's final metrics.
+                        let baseline = self.line.data.metrics.baseline
+                            + vertical_offset(
+                                style.alignment_baseline,
+                                style.baseline_shift,
+                                run.metrics().ascent,
+                                run.metrics().descent,
+                                run.font_size(),
+                                self.line.data.metrics.ascent,
+                                self.line.data.metrics.descent,
+                            );
                         return Some(PositionedLayoutItem::GlyphRun(GlyphRun {
                             run,
                             style,
@@ -306,7 +329,7 @@ impl<'a, B: Brush> Iterator for GlyphRunIter<'a, B> {
                             offset: offset
                                 + self.line.data.metrics.inline_min_coord
                                 + self.line.data.metrics.offset,
-                            baseline: self.line.data.metrics.baseline,
+                            baseline,
                             advance,
                         }));
                     }

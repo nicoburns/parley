@@ -17,9 +17,45 @@ use crate::layout::{
     LineMetrics, Run,
 };
 use crate::style::Brush;
-use crate::{InlineBoxKind, OverflowWrap, TextWrapMode};
+use crate::{AlignmentBaseline, BaselineShift, InlineBoxKind, OverflowWrap, TextWrapMode};
 
 use core::ops::Range;
+
+/// Computes the vertical offset (in layout units, y-down) applied to an item's
+/// baseline as a result of its [`AlignmentBaseline`] and [`BaselineShift`] styles.
+///
+/// A negative result moves the item up, a positive result moves it down.
+///
+/// `ref_ascent` and `ref_descent` are the ascent and descent of the baseline the
+/// item is aligned against. Passing the item's own ascent/descent yields the
+/// "self-contained" offset (the contribution that must grow the line box so the
+/// item is not clipped). Passing the final line ascent/descent yields the full
+/// offset used when positioning the item against the line.
+pub(crate) fn vertical_offset(
+    alignment_baseline: AlignmentBaseline,
+    baseline_shift: BaselineShift,
+    ascent: f32,
+    descent: f32,
+    font_size: f32,
+    ref_ascent: f32,
+    ref_descent: f32,
+) -> f32 {
+    let align = match alignment_baseline {
+        AlignmentBaseline::Baseline => 0.0,
+        AlignmentBaseline::Middle => (ascent - descent) * 0.5,
+        AlignmentBaseline::TextTop => ascent - ref_ascent,
+        AlignmentBaseline::TextBottom => ref_descent - descent,
+    };
+    let shift = match baseline_shift {
+        BaselineShift::None => 0.0,
+        BaselineShift::Superscript => -0.4 * font_size,
+        BaselineShift::Subscript => 0.2 * font_size,
+        BaselineShift::Top => ascent - ref_ascent,
+        BaselineShift::Bottom => ref_descent - descent,
+        BaselineShift::Absolute(value) => -value,
+    };
+    align + shift
+}
 
 #[derive(Default)]
 struct LineLayout {
@@ -929,9 +965,22 @@ impl<'a, B: Brush> BreakLines<'a, B> {
                     if item.kind == InlineBoxKind::InFlow {
                         // Default vertical alignment is to align the bottom of boxes with the text baseline.
                         // This is equivalent to the entire height of the box being "ascent"
-                        let baseline = item.baseline.unwrap_or(item.height);
-                        line.metrics.ascent = line.metrics.ascent.max(baseline);
-                        line.metrics.descent = line.metrics.descent.max(item.height - baseline);
+                        let box_ascent = item.baseline.unwrap_or(item.height);
+                        let box_descent = item.height - box_ascent;
+
+                        // Grow the line box to fit the box's self-contained baseline shift
+                        // (reference == the box's own metrics).
+                        let offset = vertical_offset(
+                            AlignmentBaseline::Baseline,
+                            item.baseline_shift,
+                            box_ascent,
+                            box_descent,
+                            item.height,
+                            box_ascent,
+                            box_descent,
+                        );
+                        line.metrics.ascent = line.metrics.ascent.max(box_ascent - offset);
+                        line.metrics.descent = line.metrics.descent.max(box_descent + offset);
 
                         // Mark us as having seen non-whitespace content on this line
                         have_metrics = true;
@@ -967,6 +1016,34 @@ impl<'a, B: Brush> BreakLines<'a, B> {
                     let run = &self.layout.data.runs[line_item.index];
                     line.metrics.ascent = line.metrics.ascent.max(run.metrics.ascent);
                     line.metrics.descent = line.metrics.descent.max(run.metrics.descent);
+
+                    // Grow the line box to fit any per-style vertical alignment or baseline
+                    // shift applied to the run's clusters. Using the run's own metrics as the
+                    // reference means only the self-contained portion of the offset (sub/super
+                    // script, absolute shift, middle alignment) grows the line; alignment that
+                    // is relative to the line box stays within the existing extents.
+                    let ascent = run.metrics.ascent;
+                    let descent = run.metrics.descent;
+                    let font_size = run.font_size;
+                    let mut last_style_index = u16::MAX;
+                    for cluster in &self.layout.data.clusters[line_item.cluster_range.clone()] {
+                        if cluster.style_index == last_style_index {
+                            continue;
+                        }
+                        last_style_index = cluster.style_index;
+                        let style = &self.layout.data.styles[cluster.style_index as usize];
+                        let offset = vertical_offset(
+                            style.alignment_baseline,
+                            style.baseline_shift,
+                            ascent,
+                            descent,
+                            font_size,
+                            ascent,
+                            descent,
+                        );
+                        line.metrics.ascent = line.metrics.ascent.max(ascent - offset);
+                        line.metrics.descent = line.metrics.descent.max(descent + offset);
+                    }
 
                     // Mark us as having seen non-whitespace content on this line
                     have_metrics = true;
