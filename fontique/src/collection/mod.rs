@@ -7,12 +7,12 @@ mod query;
 
 pub use query::{Query, QueryFamily, QueryFont, QueryStatus};
 
-use crate::font::FontInfoOverride;
+use crate::font::{FontId, FontInfoOverride};
 
 use super::SourceCache;
 
 use super::{
-    Blob, FontStyle, FontWeight, FontWidth, GenericFamily, Language, Script,
+    Blob, GenericFamily, Language, Script,
     backend::SystemFonts,
     fallback::{FallbackKey, FallbackMap},
     family::{FamilyId, FamilyInfo},
@@ -195,29 +195,26 @@ impl Collection {
 
     /// Registers all fonts that exist in the given data.
     ///
-    /// Returns a list of pairs each containing the family identifier and fonts
-    /// added to that family.
+    /// Returns a list of identifiers for the fonts that were added. The
+    /// family that a font was added to can be retrieved with
+    /// [`FontId::family`] and the font can be removed from the collection by
+    /// passing its identifier to [`Collection::unregister_font`].
     ///
     /// Optionally, you can override various aspects of the font's metadata.
     pub fn register_fonts(
         &mut self,
         data: Blob<u8>,
         info_override: Option<FontInfoOverride<'_>>,
-    ) -> Vec<(FamilyId, Vec<FontInfo>)> {
+    ) -> Vec<FontId> {
         self.inner.register_fonts(data, info_override)
     }
 
-    /// Unregisters the font with the given attributes from the given family.
+    /// Unregisters the font with the given identifier, as returned by
+    /// [`Collection::register_fonts`].
     ///
-    /// Returns true if a font was removed from the family, false otherwise.
-    pub fn unregister_font(
-        &mut self,
-        family: FamilyId,
-        width: FontWidth,
-        style: FontStyle,
-        weight: FontWeight,
-    ) -> bool {
-        self.inner.unregister_font(family, width, style, weight)
+    /// Returns true if the font was removed from its family, false otherwise.
+    pub fn unregister_font(&mut self, font: FontId) -> bool {
+        self.inner.unregister_font(font)
     }
 
     /// Clears this collection. Un-registers all fonts previously registered via
@@ -497,13 +494,12 @@ impl Inner {
 
     /// Registers all fonts that exist in the given data.
     ///
-    /// Returns a list of pairs each containing the family identifier and fonts
-    /// added to that family.
+    /// Returns a list of identifiers for the fonts that were added.
     pub fn register_fonts(
         &mut self,
         data: Blob<u8>,
         info_override: Option<FontInfoOverride<'_>>,
-    ) -> Vec<(FamilyId, Vec<FontInfo>)> {
+    ) -> Vec<FontId> {
         #[cfg(feature = "std")]
         if let Some(shared) = &self.shared {
             let result = shared
@@ -520,34 +516,20 @@ impl Inner {
         self.data.register_fonts(data, info_override)
     }
 
-    /// Unregisters the font with the given attributes from the given family.
+    /// Unregisters the font with the given identifier.
     ///
-    /// Returns true if a font was removed from the family, false otherwise.
-    pub fn unregister_font(
-        &mut self,
-        family: FamilyId,
-        width: FontWidth,
-        style: FontStyle,
-        weight: FontWeight,
-    ) -> bool {
+    /// Returns true if the font was removed from its family, false otherwise.
+    pub fn unregister_font(&mut self, font: FontId) -> bool {
         #[cfg(feature = "std")]
         if let Some(shared) = &self.shared {
-            let result = shared
-                .data
-                .lock()
-                .unwrap()
-                .unregister_font(family, width, style, weight);
+            let result = shared.data.lock().unwrap().unregister_font(font);
             shared.bump_version();
             result.is_some()
         } else {
-            self.data
-                .unregister_font(family, width, style, weight)
-                .is_some()
+            self.data.unregister_font(font).is_some()
         }
         #[cfg(not(feature = "std"))]
-        self.data
-            .unregister_font(family, width, style, weight)
-            .is_some()
+        self.data.unregister_font(font).is_some()
     }
 
     /// Clears this collection. Un-registers all fonts previously registered via
@@ -703,7 +685,7 @@ impl CommonData {
         &mut self,
         data: Blob<u8>,
         info_override: Option<FontInfoOverride<'_>>,
-    ) -> Vec<(FamilyId, Vec<FontInfo>)> {
+    ) -> Vec<FontId> {
         let mut families: HashMap<FamilyId, (FamilyName, Vec<FontInfo>)> = HashMap::default();
         let mut scratch_family_name = String::default();
 
@@ -722,7 +704,11 @@ impl CommonData {
 
         families
             .into_iter()
-            .map(|(id, (_, fonts))| (id, fonts))
+            .flat_map(|(id, (_, fonts))| {
+                fonts
+                    .into_iter()
+                    .map(move |font| FontId::new(id, font.source().id(), font.index()))
+            })
             .collect()
     }
 
@@ -786,21 +772,20 @@ impl CommonData {
         }
     }
 
-    fn unregister_font(
-        &mut self,
-        family: FamilyId,
-        width: FontWidth,
-        style: FontStyle,
-        weight: FontWeight,
-    ) -> Option<()> {
-        let family_name = self.family_names.get_by_id(family)?;
-        let family = self.families.get_mut(&family)?.as_mut()?;
+    fn unregister_font(&mut self, font: FontId) -> Option<()> {
+        let family_id = font.family();
+        let family_name = self.family_names.get_by_id(family_id)?;
+        let family = self.families.get_mut(&family_id)?.as_mut()?;
 
-        let new_fonts = family
+        let new_fonts: Vec<_> = family
             .fonts()
             .iter()
-            .filter(|f| f.width() != width || f.style() != style || f.weight() != weight)
-            .cloned();
+            .filter(|f| !font.matches(f))
+            .cloned()
+            .collect();
+        if new_fonts.len() == family.fonts().len() {
+            return None;
+        }
         *family = FamilyInfo::new(family_name.clone(), new_fonts);
 
         Some(())

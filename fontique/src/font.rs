@@ -5,23 +5,29 @@
 
 use crate::CharmapIndex;
 
-use super::source::{SourceInfo, SourceKind};
+use super::family::FamilyId;
+use super::source::{SourceId, SourceInfo, SourceKind};
 use super::{Blob, source_cache::SourceCache};
-use crate::{FontStyle, FontWeight, FontWidth};
+use crate::{AttrRange, FontStyle, FontWeight, FontWidth};
 use core::fmt;
 use read_fonts::{FontRef, TableProvider as _, types::Tag};
 use smallvec::SmallVec;
 
 type AxisVec = SmallVec<[AxisInfo; 1]>;
 
+/// Default oblique angle in degrees, used both as the angle for
+/// `FontStyle::Oblique(None)` and as the angle for synthesized oblique
+/// styles.
+pub(crate) const DEFAULT_OBLIQUE_ANGLE: f32 = 14.0;
+
 /// Representation of a single font in a family.
 #[derive(Clone, Debug)]
 pub struct FontInfo {
     source: SourceInfo,
     index: u32,
-    width: FontWidth,
-    style: FontStyle,
-    weight: FontWeight,
+    width: AttrRange<FontWidth>,
+    style: AttrRange<FontStyle>,
+    weight: AttrRange<FontWeight>,
     axes: AxisVec,
     attr_axes: u8,
     charmap_index: CharmapIndex,
@@ -69,68 +75,94 @@ impl FontInfo {
         }
     }
 
-    /// Returns the visual width of the font-- a relative change from the normal
-    /// aspect ratio, typically in the range `0.5` to `2.0`.
-    pub fn width(&self) -> FontWidth {
+    /// Returns the range of visual widths supported by the font-- a relative
+    /// change from the normal aspect ratio, typically in the range `0.5` to
+    /// `2.0`.
+    ///
+    /// For non-variable fonts this is a trivial range containing a single
+    /// value. For variable fonts with a `wdth` axis, this is the range of
+    /// that axis.
+    pub fn width(&self) -> AttrRange<FontWidth> {
         self.width
     }
 
-    /// Returns the visual style or 'slope' of the font.
-    pub fn style(&self) -> FontStyle {
+    /// Returns the range of visual styles or 'slopes' supported by the font.
+    ///
+    /// For non-variable fonts this is a trivial range containing a single
+    /// value. For variable fonts, this range is derived from the `ital` or
+    /// `slnt` axes if present.
+    pub fn style(&self) -> AttrRange<FontStyle> {
         self.style
     }
 
-    /// Returns the visual weight class of the font, typically on a scale
-    /// from `1.0` to `1000.0`.
-    pub fn weight(&self) -> FontWeight {
+    /// Returns the range of visual weight classes supported by the font,
+    /// typically on a scale from `1.0` to `1000.0`.
+    ///
+    /// For non-variable fonts this is a trivial range containing a single
+    /// value. For variable fonts with a `wght` axis, this is the range of
+    /// that axis.
+    pub fn weight(&self) -> AttrRange<FontWeight> {
         self.weight
     }
 
     /// Returns synthesis suggestions for this font with the given attributes.
+    ///
+    /// Values applied to variation axes are clamped to the range supported
+    /// by the font.
     pub fn synthesis(&self, width: FontWidth, style: FontStyle, weight: FontWeight) -> Synthesis {
         let mut synth = Synthesis::default();
         let mut len = 0_usize;
-        if self.has_width_axis() && self.width != width {
-            synth.vars[len] = (Tag::new(b"wdth"), width.percentage());
-            len += 1;
-        }
-        if self.weight != weight {
-            if self.has_weight_axis() {
-                synth.vars[len] = (Tag::new(b"wght"), weight.value());
+        // Pushes a variation setting unless it matches the axis default.
+        let mut push_var = |synth: &mut Synthesis, axis: &AxisInfo, value: f32| {
+            // NOTE: not using `f32::clamp` as it panics if a malformed font
+            // has an inverted axis range.
+            let value = value.max(axis.min).min(axis.max);
+            if value != axis.default {
+                synth.vars[len] = (axis.tag, value);
                 len += 1;
-            } else if weight.value() > self.weight.value() {
-                synth.embolden = true;
             }
+        };
+        if let Some(axis) = self.axis(Tag::new(b"wdth")) {
+            push_var(&mut synth, &axis, width.percentage());
         }
-        if self.style != style {
-            match style {
-                FontStyle::Normal => {}
-                FontStyle::Italic => {
-                    if self.style == FontStyle::Normal {
-                        if self.has_italic_axis() {
-                            synth.vars[len] = (Tag::new(b"ital"), 1.0);
-                            len += 1;
-                        } else if self.has_slant_axis() {
-                            synth.vars[len] = (Tag::new(b"slnt"), 14.0);
-                            len += 1;
-                        } else {
-                            synth.skew = 14;
-                        }
-                    }
+        if let Some(axis) = self.axis(Tag::new(b"wght")) {
+            push_var(&mut synth, &axis, weight.value());
+        } else if weight.value() > self.weight.max().value() {
+            synth.embolden = true;
+        }
+        // NOTE: the CSS oblique angle convention has positive angles slanting
+        // forward (clockwise) while the OpenType `slnt` axis has positive
+        // values slanting counter-clockwise, so oblique angles are negated
+        // when applied to the `slnt` axis.
+        // See: <https://drafts.csswg.org/css-fonts/#font-style-desc>
+        match style {
+            FontStyle::Normal => {
+                // Reset any variation axes whose default is not upright.
+                if let Some(axis) = self.axis(Tag::new(b"ital")) {
+                    push_var(&mut synth, &axis, 0.0);
+                } else if let Some(axis) = self.axis(Tag::new(b"slnt")) {
+                    push_var(&mut synth, &axis, 0.0);
                 }
-                FontStyle::Oblique(angle) => {
-                    if self.style == FontStyle::Normal {
-                        let degrees = angle.unwrap_or(14.0);
-                        if self.has_slant_axis() {
-                            synth.vars[len] = (Tag::new(b"slnt"), degrees);
-                            len += 1;
-                        } else if self.has_italic_axis() && degrees > 0. {
-                            synth.vars[len] = (Tag::new(b"ital"), 1.0);
-                            len += 1;
-                        } else {
-                            synth.skew = degrees as i8;
-                        }
+            }
+            FontStyle::Italic => {
+                if let Some(axis) = self.axis(Tag::new(b"ital")) {
+                    push_var(&mut synth, &axis, 1.0);
+                } else if let Some(axis) = self.axis(Tag::new(b"slnt")) {
+                    push_var(&mut synth, &axis, -DEFAULT_OBLIQUE_ANGLE);
+                } else if self.style == AttrRange::single(FontStyle::Normal) {
+                    synth.skew = DEFAULT_OBLIQUE_ANGLE as i8;
+                }
+            }
+            FontStyle::Oblique(angle) => {
+                let degrees = angle.unwrap_or(DEFAULT_OBLIQUE_ANGLE);
+                if let Some(axis) = self.axis(Tag::new(b"slnt")) {
+                    push_var(&mut synth, &axis, -degrees);
+                } else if let Some(axis) = self.axis(Tag::new(b"ital")) {
+                    if degrees > 0. {
+                        push_var(&mut synth, &axis, 1.0);
                     }
+                } else if self.style == AttrRange::single(FontStyle::Normal) {
+                    synth.skew = degrees as i8;
                 }
             }
         }
@@ -143,6 +175,13 @@ impl FontInfo {
     /// [axes]: crate::AxisInfo
     pub fn axes(&self) -> &[AxisInfo] {
         &self.axes
+    }
+
+    /// Returns the variation [axis] with the given tag, if present.
+    ///
+    /// [axis]: crate::AxisInfo
+    pub fn axis(&self, tag: Tag) -> Option<AxisInfo> {
+        self.axes.iter().find(|axis| axis.tag == tag).copied()
     }
 
     /// Returns `true` if the font has a `wght` [axis].
@@ -237,6 +276,39 @@ impl FontInfo {
         } else {
             (SmallVec::default(), 0)
         };
+        let find_axis = |tag: &[u8; 4]| axes.iter().find(|axis| axis.tag == Tag::new(tag));
+        // For variable fonts, derive the supported range of each attribute
+        // from the corresponding variation axis. Fonts without the relevant
+        // axis support a single value.
+        let width = match find_axis(b"wdth") {
+            Some(axis) => AttrRange::new(
+                FontWidth::from_percentage(axis.min),
+                FontWidth::from_percentage(axis.max),
+            ),
+            None => AttrRange::single(width),
+        };
+        let weight = match find_axis(b"wght") {
+            Some(axis) => AttrRange::new(FontWeight::new(axis.min), FontWeight::new(axis.max)),
+            None => AttrRange::single(weight),
+        };
+        let style = match find_axis(b"ital") {
+            // An `ital` axis spanning 0..=1 supports both normal and italic.
+            Some(axis) if axis.min <= 0. && axis.max >= 1. => {
+                AttrRange::new(FontStyle::Normal, FontStyle::Italic)
+            }
+            _ => match find_axis(b"slnt") {
+                // NOTE: positive `slnt` values are counter-clockwise slants
+                // while positive CSS oblique angles are clockwise, so the
+                // axis range is negated (and thus reversed) when mapped to
+                // a range of oblique angles. `0.0` is added to normalize
+                // negative zero.
+                Some(axis) => AttrRange::new(
+                    FontStyle::Oblique(Some(-axis.max + 0.0)),
+                    FontStyle::Oblique(Some(-axis.min + 0.0)),
+                ),
+                None => AttrRange::single(style),
+            },
+        };
         Some(Self {
             source,
             index,
@@ -256,14 +328,14 @@ impl FontInfo {
         style: FontStyle,
         weight: FontWeight,
     ) {
-        if self.width == FontWidth::default() {
-            self.width = width;
+        if self.width == AttrRange::single(FontWidth::default()) {
+            self.width = AttrRange::single(width);
         }
-        if self.style == FontStyle::default() {
-            self.style = style;
+        if self.style == AttrRange::single(FontStyle::default()) {
+            self.style = AttrRange::single(style);
         }
-        if self.weight == FontWeight::default() {
-            self.weight = weight;
+        if self.weight == AttrRange::single(FontWeight::default()) {
+            self.weight = AttrRange::single(weight);
         }
     }
 
@@ -462,19 +534,64 @@ fn read_attributes(font: &FontRef<'_>) -> (FontWidth, FontStyle, FontWeight) {
 /// Helper for specifying aspects of a font's metadata to be overridden when the
 /// font is registered. Helpful when implementing a `@font-face`-like API, which
 /// allows those defining the fonts to specify certain font properties manually.
+///
+/// The attribute overrides are ranges so that both a minimum and maximum can
+/// be specified (e.g. for variable fonts). Use [`AttrRange::single`] (or the
+/// `From` impl converting a value into a trivial range) to override with a
+/// single value.
 #[derive(Copy, Clone, Debug, Default)]
 pub struct FontInfoOverride<'a> {
     /// Font family name to be used instead of the one specified in the font
     /// itself.
     pub family_name: Option<&'a str>,
-    /// Font width to be used instead of the one specified in the font itself.
-    pub width: Option<FontWidth>,
-    /// Font's visual style / "slope" to be used instead of the one specified in
-    /// the font itself.
-    pub style: Option<FontStyle>,
-    /// Font weight to be used instead of the one specified in the font itself.
-    pub weight: Option<FontWeight>,
+    /// Font width (range) to be used instead of the one specified in the font
+    /// itself.
+    pub width: Option<AttrRange<FontWidth>>,
+    /// Font's visual style / "slope" (range) to be used instead of the one
+    /// specified in the font itself.
+    pub style: Option<AttrRange<FontStyle>>,
+    /// Font weight (range) to be used instead of the one specified in the font
+    /// itself.
+    pub weight: Option<AttrRange<FontWeight>>,
     /// Default values for the font's variation axes. Axes not included within
     /// the font will be ignored.
     pub axes: Option<&'a [(Tag, f32)]>,
+}
+
+/// Opaque unique identifier for a font that has been registered in a
+/// [`Collection`].
+///
+/// Identifiers are returned by [`Collection::register_fonts`] and can be used
+/// to remove the corresponding font from the collection with
+/// [`Collection::unregister_font`].
+///
+/// [`Collection`]: crate::Collection
+/// [`Collection::register_fonts`]: crate::Collection::register_fonts
+/// [`Collection::unregister_font`]: crate::Collection::unregister_font
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct FontId {
+    family: FamilyId,
+    source: SourceId,
+    index: u32,
+}
+
+impl FontId {
+    pub(crate) fn new(family: FamilyId, source: SourceId, index: u32) -> Self {
+        Self {
+            family,
+            source,
+            index,
+        }
+    }
+
+    /// Returns the identifier of the family that the font was registered
+    /// into.
+    pub fn family(self) -> FamilyId {
+        self.family
+    }
+
+    /// Returns `true` if this identifier refers to the given font.
+    pub(crate) fn matches(self, font: &FontInfo) -> bool {
+        self.source == font.source().id() && self.index == font.index()
+    }
 }

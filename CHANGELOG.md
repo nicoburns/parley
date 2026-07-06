@@ -12,17 +12,33 @@ Subheadings to categorize changes are `added, changed, deprecated, removed, fixe
 
 This release has an [MSRV] of 1.88.
 
+### Added
+
+#### Fontique
+
+- `AttrRange<T>`, a generic inclusive range of font attribute values (e.g. `AttrRange<FontWeight>`). Non-variable fonts have trivial ranges (`min == max`) while ranges for variable fonts are derived from their variation axes (`wght`, `wdth`, `ital` and `slnt`). (#TBD by [@nicoburns][])
+- `FontId`, an opaque identifier for a registered font, returned by `Collection::register_fonts` and accepted by `Collection::unregister_font`. (#TBD by [@nicoburns][])
+- `FontInfo::axis`, which returns the variation axis with a given tag. (#TBD by [@nicoburns][])
+
 ### Changed
 
 #### Parley
 
 - Breaking change: the `Glyph::style_index` field was removed. Use `Cluster::{style, style_index}` or `GlyphRun::{style, style_index}` instead. (#661 by [@tomcur][])
 
+#### Fontique
+
+- Breaking change: font matching now operates on ranges of attribute values, so variable fonts match all values within the range of their variation axes rather than just their default instance. (#TBD by [@nicoburns][])
+- Breaking change: `FontInfo::{width, style, weight}` now return `AttrRange`s of the supported values. (#TBD by [@nicoburns][])
+- Breaking change: the `width`, `style` and `weight` fields of `FontInfoOverride` are now `AttrRange`s, allowing both a minimum and maximum to be specified. Single values can be converted into trivial ranges with `From`/`Into` or `AttrRange::single`. (#TBD by [@nicoburns][])
+- Breaking change: `Collection::register_fonts` now returns `Vec<FontId>` and `Collection::unregister_font` now accepts a `FontId` instead of a family identifier plus font attributes. (#TBD by [@nicoburns][])
+
 ### Fixed
 
 #### Fontique
 
 - Fix compilation on 32-bit platforms without 64-bit atomics (e.g. `mipsel-unknown-linux-gnu`). (#671 by [@nicoburns][])
+- Synthesis suggestions now negate CSS oblique angles when applying them to the `slnt` axis (which uses the opposite sign convention) and clamp variation values to the axis ranges supported by the font. (#TBD by [@nicoburns][])
 
 ## [0.11.0] - 2026-06-24
 
