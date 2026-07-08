@@ -31,7 +31,6 @@ pub(crate) struct TreeStyleBuilder<B: Brush> {
     text: String,
     uncommitted_text: String,
     current_span: usize,
-    is_span_first: bool,
     last_item_kind: ItemKind,
 }
 
@@ -50,7 +49,6 @@ impl<B: Brush> Default for TreeStyleBuilder<B> {
             text: String::new(),
             uncommitted_text: String::new(),
             current_span: usize::MAX,
-            is_span_first: false,
             last_item_kind: ItemKind::None,
         }
     }
@@ -73,18 +71,14 @@ impl<B: Brush> TreeStyleBuilder<B> {
             style_id: None,
         });
         self.current_span = 0;
-        self.is_span_first = true;
-    }
-
-    pub(crate) fn set_is_span_first(&mut self, is_span_first: bool) {
-        self.is_span_first = is_span_first;
+        self.last_item_kind = ItemKind::None;
     }
 
     pub(crate) fn set_last_item_kind(&mut self, item_kind: ItemKind) {
         self.last_item_kind = item_kind;
     }
 
-    pub(crate) fn push_uncommitted_text(&mut self, is_span_last: bool) {
+    pub(crate) fn push_uncommitted_text(&mut self, is_layout_end: bool) {
         // The white space collapsing is performed in place within `self.uncommitted_text` (all
         // modes only ever shrink the text), whose allocation is also retained across commits.
         //
@@ -99,19 +93,25 @@ impl<B: Brush> TreeStyleBuilder<B> {
             WhiteSpaceCollapse::Collapse | WhiteSpaceCollapse::PreserveBreaks => {
                 let preserve_breaks =
                     matches!(white_space_collapse, WhiteSpaceCollapse::PreserveBreaks);
-                let trim_start = self.is_span_first
-                    || (self.last_item_kind == ItemKind::TextRun
-                        && self
-                            .text
-                            .chars()
-                            .last()
-                            .is_some_and(|c| c.is_ascii_whitespace()));
+                // Collapsing operates across the whole layout: style span boundaries neither
+                // block collapsing nor cause trimming. White space is trimmed at the very start
+                // of the layout, and collapsed away entirely when the preceding text run already
+                // ends with white space (but preserved after an inline box).
+                let trim_start = match self.last_item_kind {
+                    ItemKind::None => true,
+                    ItemKind::InlineBox => false,
+                    ItemKind::TextRun => self
+                        .text
+                        .chars()
+                        .last()
+                        .is_some_and(|c| c.is_ascii_whitespace()),
+                };
 
                 collapse_white_space(
                     &mut self.uncommitted_text,
                     preserve_breaks,
                     trim_start,
-                    is_span_last,
+                    is_layout_end,
                 );
             }
             // Preserve all white space, but convert tabs and segment breaks to spaces.
@@ -130,7 +130,6 @@ impl<B: Brush> TreeStyleBuilder<B> {
         self.style_runs.push(StyleRun { style_index, range });
         self.text.push_str(&self.uncommitted_text);
         self.uncommitted_text.clear();
-        self.is_span_first = false;
         self.last_item_kind = ItemKind::TextRun;
     }
 
@@ -157,7 +156,6 @@ impl<B: Brush> TreeStyleBuilder<B> {
             style_id: None,
         });
         self.current_span = self.tree.len() - 1;
-        self.is_span_first = true;
     }
 
     pub(crate) fn push_style_modification_span(
@@ -172,7 +170,7 @@ impl<B: Brush> TreeStyleBuilder<B> {
     }
 
     pub(crate) fn pop_style_span(&mut self) {
-        self.push_uncommitted_text(true);
+        self.push_uncommitted_text(false);
 
         self.current_span = self.tree[self.current_span]
             .parent
@@ -192,11 +190,13 @@ impl<B: Brush> TreeStyleBuilder<B> {
         style_table: &mut Vec<ResolvedStyle<B>>,
         style_runs: &mut Vec<StyleRun>,
     ) -> String {
+        // Commit any remaining text first: it is the last text of the layout, so trailing white
+        // space is trimmed (`is_layout_end`) even when the text sits inside an unclosed span.
+        self.push_uncommitted_text(true);
+
         while self.tree[self.current_span].parent.is_some() {
             self.pop_style_span();
         }
-
-        self.push_uncommitted_text(true);
 
         style_table.clear();
         style_runs.clear();
@@ -509,6 +509,71 @@ mod tests {
         assert_eq!(text, "a b c d");
         assert_eq!(text.as_ptr(), pointer);
         assert_eq!(text.capacity(), capacity);
+    }
+
+    /// Helper that runs `texts` through the tree builder, each text in its own child span
+    /// (`None` entries are pushed as text directly at the root), with the given
+    /// white-space-collapse mode, and returns the resulting text buffer.
+    fn collapsed_spans(mode: WhiteSpaceCollapse, texts: &[(Option<()>, &str)]) -> String {
+        let mut builder = TreeStyleBuilder::<u32>::default();
+        builder.begin(ResolvedStyle {
+            white_space_collapse: mode,
+            ..ResolvedStyle::default()
+        });
+        for (span, text) in texts {
+            if span.is_some() {
+                builder.push_style_modification_span([ResolvedProperty::FontSize(20.)].into_iter());
+                builder.push_text(text);
+                builder.pop_style_span();
+            } else {
+                builder.push_text(text);
+            }
+        }
+        let mut style_table = Vec::new();
+        let mut style_runs = Vec::new();
+        builder.finish(&mut style_table, &mut style_runs)
+    }
+
+    /// White space collapsing operates across the whole inline formatting context: span
+    /// boundaries neither block collapsing nor cause trimming. Trimming only happens at the
+    /// boundaries of the layout as a whole.
+    #[test]
+    fn collapse_preserves_white_space_at_span_boundaries() {
+        use WhiteSpaceCollapse::*;
+        let span = Some(());
+
+        // Trailing white space at the end of a span collapses with what follows,
+        // leaving a single space (e.g. `<span>foo </span>bar`).
+        assert_eq!(
+            collapsed_spans(Collapse, &[(span, "foo "), (None, "bar")]),
+            "foo bar"
+        );
+        // Leading white space at the start of a span collapses with what precedes it
+        // (e.g. `foo<span> bar</span>`).
+        assert_eq!(
+            collapsed_spans(Collapse, &[(None, "foo"), (span, " bar")]),
+            "foo bar"
+        );
+        // White space on both sides of a span boundary collapses to a single space.
+        assert_eq!(
+            collapsed_spans(Collapse, &[(None, "foo "), (span, " bar")]),
+            "foo bar"
+        );
+        // A white-space-only span between two words collapses to a single space.
+        assert_eq!(
+            collapsed_spans(Collapse, &[(None, "foo"), (span, " "), (None, "bar")]),
+            "foo bar"
+        );
+        // White space at the very start of the layout is trimmed, even inside a span.
+        assert_eq!(
+            collapsed_spans(Collapse, &[(span, " foo"), (None, " bar")]),
+            "foo bar"
+        );
+        // A white-space-only span at the start of the layout is trimmed entirely.
+        assert_eq!(
+            collapsed_spans(Collapse, &[(span, " "), (None, "foo")]),
+            "foo"
+        );
     }
 
     #[test]
