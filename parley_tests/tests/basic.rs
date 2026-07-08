@@ -426,13 +426,13 @@ fn leading_whitespace() {
         (WhiteSpaceCollapse::Collapse, "collapse"),
     ] {
         let mut builder = env.tree_builder();
-        builder.set_white_space_mode(mode);
+        builder.push_style_modification_span(&[StyleProperty::WhiteSpaceCollapse(mode)]);
         builder.push_text("Line 1");
-        builder.push_style_modification_span(None);
-        builder.set_white_space_mode(WhiteSpaceCollapse::Preserve);
+        builder.push_style_modification_span(&[StyleProperty::WhiteSpaceCollapse(
+            WhiteSpaceCollapse::Preserve,
+        )]);
         builder.push_text("\n");
         builder.pop_style_span();
-        builder.set_white_space_mode(mode);
         builder.push_text("  Line 2");
         let (mut layout, _) = builder.build();
         layout.break_all_lines(None);
@@ -462,7 +462,7 @@ fn white_space_collapse_hard_breaks() {
 
     for (mode, text, expected_lines) in cases {
         let mut builder = env.tree_builder();
-        builder.set_white_space_mode(mode);
+        builder.push_style_modification_span(&[StyleProperty::WhiteSpaceCollapse(mode)]);
         builder.push_text(text);
         let (mut layout, _) = builder.build();
         layout.break_all_lines(None);
@@ -489,7 +489,7 @@ fn white_space_collapse_trailing_whitespace_intrinsic_sizes() {
 
     let widths = |env: &mut TestEnv, mode| {
         let mut builder = env.tree_builder();
-        builder.set_white_space_mode(mode);
+        builder.push_style_modification_span(&[StyleProperty::WhiteSpaceCollapse(mode)]);
         builder.push_text("xx yy ");
         let (layout, _) = builder.build();
         layout.calculate_content_widths()
@@ -519,7 +519,7 @@ fn preserve_conditionally_hangs_trailing_whitespace_at_forced_break() {
 
     let width = |env: &mut TestEnv, mode| {
         let mut builder = env.tree_builder();
-        builder.set_white_space_mode(mode);
+        builder.push_style_modification_span(&[StyleProperty::WhiteSpaceCollapse(mode)]);
         // Trailing space before a forced break, on both lines.
         builder.push_text("xx \nxx");
         let (mut layout, _) = builder.build();
@@ -547,10 +547,11 @@ fn preserve_nowrap_trailing_whitespace_takes_up_space() {
 
     let build = |env: &mut TestEnv, text: &str, wrap_mode, max_advance| {
         let mut builder = env.tree_builder();
-        builder.set_white_space_mode(WhiteSpaceCollapse::Preserve);
-        builder.push_style_modification_span(&[StyleProperty::TextWrapMode(wrap_mode)]);
+        builder.push_style_modification_span(&[
+            StyleProperty::WhiteSpaceCollapse(WhiteSpaceCollapse::Preserve),
+            StyleProperty::TextWrapMode(wrap_mode),
+        ]);
         builder.push_text(text);
-        builder.pop_style_span();
         let (mut layout, _) = builder.build();
         layout.break_all_lines(max_advance);
         layout.align(Alignment::Start, AlignmentOptions::default());
@@ -598,7 +599,9 @@ fn preserved_trailing_whitespace_not_considered_for_fit() {
 
     let build = |env: &mut TestEnv, text: &str, max_advance| {
         let mut builder = env.tree_builder();
-        builder.set_white_space_mode(WhiteSpaceCollapse::Preserve);
+        builder.push_style_modification_span(&[StyleProperty::WhiteSpaceCollapse(
+            WhiteSpaceCollapse::Preserve,
+        )]);
         builder.push_text(text);
         let (mut layout, _) = builder.build();
         layout.break_all_lines(max_advance);
@@ -654,7 +657,9 @@ fn no_break_space_does_not_hang() {
 
     let build = |env: &mut TestEnv, text: &str, max_advance| {
         let mut builder = env.tree_builder();
-        builder.set_white_space_mode(WhiteSpaceCollapse::Preserve);
+        builder.push_style_modification_span(&[StyleProperty::WhiteSpaceCollapse(
+            WhiteSpaceCollapse::Preserve,
+        )]);
         builder.push_text(text);
         let (mut layout, _) = builder.build();
         layout.break_all_lines(max_advance);

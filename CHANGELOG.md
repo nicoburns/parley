@@ -17,12 +17,14 @@ This release has an [MSRV] of 1.88.
 #### Parley
 
 - Support for the `PreserveBreaks`, `PreserveSpaces`, and `BreakSpaces` `WhiteSpaceCollapse` modes, matching the corresponding CSS `white-space-collapse` values.
+- `WhiteSpaceCollapse` is now a regular style property: `StyleProperty::WhiteSpaceCollapse` and `TextStyle::white_space_collapse` (with a `From<WhiteSpaceCollapse>` conversion into `StyleProperty`). Like other properties it is inherited through tree builder style spans. Note that the collapsing of the text itself is only performed by the tree builder; the ranged builder uses its text verbatim, but the mode's soft-wrap and hanging behavior applies to both.
 
 ### Changed
 
 #### Parley
 
 - Breaking change: the `Glyph::style_index` field was removed. Use `Cluster::{style, style_index}` or `GlyphRun::{style, style_index}` instead. (#661 by [@tomcur][])
+- Breaking change: `TreeBuilder::set_white_space_mode` was removed. Set the white-space mode via the `StyleProperty::WhiteSpaceCollapse` style property (e.g. on the root style or a style span) instead.
 
 ### Fixed
 

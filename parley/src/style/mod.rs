@@ -32,7 +32,8 @@ pub enum WhiteSpaceCollapse {
     Collapse,
     /// White space sequences and segment breaks are preserved.
     ///
-    /// This is the default, matching the initial white-space mode of the tree style builder.
+    /// This is the default: unless a collapsing mode is set, builders use the pushed text
+    /// verbatim.
     #[default]
     Preserve,
     /// White space sequences are collapsed, while segment breaks are preserved.
@@ -185,6 +186,14 @@ pub enum StyleProperty<'a, B: Brush> {
     OverflowWrap(OverflowWrap),
     /// Control over non-"emergency" line-breaking.
     TextWrapMode(TextWrapMode),
+    /// Control over how white space and segment breaks are collapsed.
+    ///
+    /// Note: the collapsing itself (the transformation of the text) is only performed for text
+    /// pushed through a tree builder; a ranged builder uses its text verbatim. The mode's
+    /// line-breaking effects (the extra soft-wrap opportunities of
+    /// [`BreakSpaces`](WhiteSpaceCollapse::BreakSpaces) and how trailing white space at the end
+    /// of a line "hangs") apply to both.
+    WhiteSpaceCollapse(WhiteSpaceCollapse),
 }
 
 /// Unresolved styles.
@@ -236,6 +245,11 @@ pub struct TextStyle<'family, 'settings, B: Brush> {
     pub overflow_wrap: OverflowWrap,
     /// Control over non-"emergency" line-breaking.
     pub text_wrap_mode: TextWrapMode,
+    /// Control over how white space and segment breaks are collapsed.
+    ///
+    /// See [`StyleProperty::WhiteSpaceCollapse`] for a note on which builders perform the
+    /// collapsing of the text itself.
+    pub white_space_collapse: WhiteSpaceCollapse,
 }
 
 impl<B: Brush> Default for TextStyle<'static, 'static, B> {
@@ -264,6 +278,7 @@ impl<B: Brush> Default for TextStyle<'static, 'static, B> {
             word_break: WordBreak::default(),
             overflow_wrap: OverflowWrap::default(),
             text_wrap_mode: TextWrapMode::default(),
+            white_space_collapse: WhiteSpaceCollapse::default(),
         }
     }
 }
@@ -343,5 +358,11 @@ impl<B: Brush> From<OverflowWrap> for StyleProperty<'_, B> {
 impl<B: Brush> From<TextWrapMode> for StyleProperty<'_, B> {
     fn from(value: TextWrapMode) -> Self {
         StyleProperty::TextWrapMode(value)
+    }
+}
+
+impl<B: Brush> From<WhiteSpaceCollapse> for StyleProperty<'_, B> {
+    fn from(value: WhiteSpaceCollapse) -> Self {
+        StyleProperty::WhiteSpaceCollapse(value)
     }
 }

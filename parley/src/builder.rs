@@ -5,7 +5,7 @@
 
 use super::FontContext;
 use super::context::LayoutContext;
-use super::style::{Brush, StyleProperty, TextStyle, WhiteSpaceCollapse};
+use super::style::{Brush, StyleProperty, TextStyle};
 
 use super::layout::Layout;
 
@@ -236,12 +236,6 @@ impl<'b, B: Brush> TreeBuilder<'b, B> {
         // TODO: arrange type better here to factor out the index
         inline_box.index = self.lcx.tree_style_builder.current_text_len();
         self.lcx.inline_boxes.push(inline_box);
-    }
-
-    pub fn set_white_space_mode(&mut self, white_space_collapse: WhiteSpaceCollapse) {
-        self.lcx
-            .tree_style_builder
-            .set_white_space_mode(white_space_collapse);
     }
 
     /// Set the callback which will be called as a first provider of line breaking decisions.

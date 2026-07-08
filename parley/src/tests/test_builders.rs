@@ -13,7 +13,7 @@ use super::utils::{ColorBrush, asserts::assert_eq_layout_data};
 use crate::{
     FontContext, FontFamily, FontFeatures, FontVariations, Layout, LayoutContext, LineHeight,
     OverflowWrap, RangedBuilder, StyleProperty, StyleRunBuilder, TextStyle, TextWrapMode,
-    TreeBuilder, WordBreak,
+    TreeBuilder, WhiteSpaceCollapse, WordBreak,
 };
 
 // TODO: `FONT_FAMILY_LIST`, `load_fonts`, and `create_font_context` are
@@ -255,6 +255,9 @@ fn create_root_style() -> TextStyle<'static, 'static, ColorBrush> {
         word_break: WordBreak::BreakAll,
         overflow_wrap: OverflowWrap::Anywhere,
         text_wrap_mode: TextWrapMode::Wrap,
+        // A non-default mode that does not transform the text (the ranged builder always uses
+        // its text verbatim, so a collapsing mode would make the two builders diverge).
+        white_space_collapse: WhiteSpaceCollapse::BreakSpaces,
     }
 }
 
@@ -288,6 +291,9 @@ fn set_root_style(rb: &mut RangedBuilder<'_, ColorBrush>) {
     rb.push_default(StyleProperty::LetterSpacing(1.5));
     rb.push_default(StyleProperty::WordBreak(WordBreak::BreakAll));
     rb.push_default(StyleProperty::OverflowWrap(OverflowWrap::Anywhere));
+    rb.push_default(StyleProperty::WhiteSpaceCollapse(
+        WhiteSpaceCollapse::BreakSpaces,
+    ));
 }
 
 /// Test that all the builders have the same default behavior.

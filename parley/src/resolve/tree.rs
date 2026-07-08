@@ -28,7 +28,6 @@ pub(crate) struct TreeStyleBuilder<B: Brush> {
     tree: Vec<StyleTreeNode<B>>,
     style_table: Vec<ResolvedStyle<B>>,
     style_runs: Vec<StyleRun>,
-    white_space_collapse: WhiteSpaceCollapse,
     text: String,
     uncommitted_text: String,
     current_span: usize,
@@ -48,7 +47,6 @@ impl<B: Brush> Default for TreeStyleBuilder<B> {
             tree: Vec::new(),
             style_table: Vec::new(),
             style_runs: Vec::new(),
-            white_space_collapse: WhiteSpaceCollapse::Preserve,
             text: String::new(),
             uncommitted_text: String::new(),
             current_span: usize::MAX,
@@ -66,7 +64,6 @@ impl<B: Brush> TreeStyleBuilder<B> {
         self.tree.clear();
         self.style_table.clear();
         self.style_runs.clear();
-        self.white_space_collapse = WhiteSpaceCollapse::Preserve;
         self.text.clear();
         self.uncommitted_text.clear();
 
@@ -77,10 +74,6 @@ impl<B: Brush> TreeStyleBuilder<B> {
         });
         self.current_span = 0;
         self.is_span_first = true;
-    }
-
-    pub(crate) fn set_white_space_mode(&mut self, white_space_collapse: WhiteSpaceCollapse) {
-        self.white_space_collapse = white_space_collapse;
     }
 
     pub(crate) fn set_is_span_first(&mut self, is_span_first: bool) {
@@ -94,16 +87,18 @@ impl<B: Brush> TreeStyleBuilder<B> {
     pub(crate) fn push_uncommitted_text(&mut self, is_span_last: bool) {
         // The white space collapsing is performed in place within `self.uncommitted_text` (all
         // modes only ever shrink the text), whose allocation is also retained across commits.
-        match self.white_space_collapse {
+        //
+        // The white-space-collapse mode is a style property, so it is constant for the current
+        // span (and thus for the whole uncommitted text, which is committed at span boundaries).
+        let white_space_collapse = self.tree[self.current_span].style.white_space_collapse;
+        match white_space_collapse {
             // Text is kept verbatim. `BreakSpaces` behaves identically to `Preserve` at this
             // stage; its extra soft-wrap opportunities and non-hanging white space are handled
             // during line breaking.
             WhiteSpaceCollapse::Preserve | WhiteSpaceCollapse::BreakSpaces => {}
             WhiteSpaceCollapse::Collapse | WhiteSpaceCollapse::PreserveBreaks => {
-                let preserve_breaks = matches!(
-                    self.white_space_collapse,
-                    WhiteSpaceCollapse::PreserveBreaks
-                );
+                let preserve_breaks =
+                    matches!(white_space_collapse, WhiteSpaceCollapse::PreserveBreaks);
                 let trim_start = self.is_span_first
                     || (self.last_item_kind == ItemKind::TextRun
                         && self
@@ -140,19 +135,11 @@ impl<B: Brush> TreeStyleBuilder<B> {
     }
 
     fn resolve_current_style_id(&mut self) -> u16 {
-        let white_space_collapse = self.white_space_collapse;
-        // The cached style id can be reused as long as the active white-space-collapse mode
-        // matches the one it was resolved under (the mode is not part of the style tree, so it
-        // can change independently of the current span's style).
-        if let Some(style_id) = self.tree[self.current_span].style_id
-            && self.style_table[style_id as usize].white_space_collapse == white_space_collapse
-        {
+        if let Some(style_id) = self.tree[self.current_span].style_id {
             return style_id;
         }
         let style_id = self.style_table.len() as u16;
-        let mut style = self.current_style();
-        style.white_space_collapse = white_space_collapse;
-        self.style_table.push(style);
+        self.style_table.push(self.current_style());
         self.tree[self.current_span].style_id = Some(style_id);
         style_id
     }
@@ -446,8 +433,10 @@ mod tests {
     /// white-space-collapse mode and returns the resulting text buffer.
     fn collapsed_text(mode: WhiteSpaceCollapse, text: &str) -> String {
         let mut builder = TreeStyleBuilder::<u32>::default();
-        builder.begin(ResolvedStyle::default());
-        builder.set_white_space_mode(mode);
+        builder.begin(ResolvedStyle {
+            white_space_collapse: mode,
+            ..ResolvedStyle::default()
+        });
         builder.push_text(text);
         let mut style_table = Vec::new();
         let mut style_runs = Vec::new();
@@ -523,25 +512,30 @@ mod tests {
     }
 
     #[test]
-    fn white_space_mode_recorded_in_style() {
+    fn white_space_mode_is_a_style_property() {
         use WhiteSpaceCollapse::*;
         let mut builder = TreeStyleBuilder::<u32>::default();
-        builder.begin(ResolvedStyle::default());
-        builder.set_white_space_mode(BreakSpaces);
-        builder.push_text("a");
-        // A span boundary commits "a" under the active mode; the following span uses a different
-        // mode, which must be recorded in a distinct style entry.
-        builder.push_style_modification_span(core::iter::empty());
-        builder.set_white_space_mode(Collapse);
-        builder.push_text("b");
+        builder.begin(ResolvedStyle {
+            white_space_collapse: BreakSpaces,
+            ..ResolvedStyle::default()
+        });
+        builder.push_text("a  ");
+        // The mode is a style property: a child span can override it (here changing the
+        // collapsing applied to its text), and it must be recorded in a distinct style entry.
+        builder.push_style_modification_span(
+            [ResolvedProperty::WhiteSpaceCollapse(Collapse)].into_iter(),
+        );
+        builder.push_text("b  c");
         builder.pop_style_span();
+        // Popping the span restores the parent's mode.
+        builder.push_text("d  ");
 
         let mut style_table = Vec::new();
         let mut style_runs = Vec::new();
         let text = builder.finish(&mut style_table, &mut style_runs);
 
-        assert_eq!(text, "ab");
-        assert_eq!(style_runs.len(), 2);
+        assert_eq!(text, "a  b cd  ");
+        assert_eq!(style_runs.len(), 3);
         assert_eq!(
             style_table[style_runs[0].style_index as usize].white_space_collapse,
             BreakSpaces
@@ -549,6 +543,10 @@ mod tests {
         assert_eq!(
             style_table[style_runs[1].style_index as usize].white_space_collapse,
             Collapse
+        );
+        assert_eq!(
+            style_table[style_runs[2].style_index as usize].white_space_collapse,
+            BreakSpaces
         );
     }
 }

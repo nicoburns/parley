@@ -166,6 +166,7 @@ impl ResolveContext {
             StyleProperty::WordBreak(value) => WordBreak(*value),
             StyleProperty::OverflowWrap(value) => OverflowWrap(*value),
             StyleProperty::TextWrapMode(value) => TextWrapMode(*value),
+            StyleProperty::WhiteSpaceCollapse(value) => WhiteSpaceCollapse(*value),
         }
     }
 
@@ -203,9 +204,7 @@ impl ResolveContext {
             word_break: raw_style.word_break,
             overflow_wrap: raw_style.overflow_wrap,
             text_wrap_mode: raw_style.text_wrap_mode,
-            // Not part of `TextStyle`; the tree style builder sets this per run based on the
-            // active white-space-collapse mode (see `resolve::tree`).
-            white_space_collapse: WhiteSpaceCollapse::default(),
+            white_space_collapse: raw_style.white_space_collapse,
         }
     }
 
@@ -390,6 +389,8 @@ pub(crate) enum ResolvedProperty<B: Brush> {
     OverflowWrap(OverflowWrap),
     /// Control over non-"emergency" line-breaking.
     TextWrapMode(TextWrapMode),
+    /// Control over how white space and segment breaks are collapsed.
+    WhiteSpaceCollapse(WhiteSpaceCollapse),
 }
 
 /// Flattened group of style properties.
@@ -431,10 +432,9 @@ pub(crate) struct ResolvedStyle<B: Brush> {
     pub(crate) text_wrap_mode: TextWrapMode,
     /// Control over how white space and segment breaks are collapsed.
     ///
-    /// Unlike the other fields, this is not a [`ResolvedProperty`] as it is applied to the text
-    /// during style resolution (see [`crate::resolve::tree`]) rather than being set as a ranged
-    /// property. It is retained here so that line breaking can honor
-    /// [`WhiteSpaceCollapse::BreakSpaces`].
+    /// The collapsing of the text itself is performed by the tree style builder (see
+    /// [`crate::resolve::tree`]); this is additionally retained so that line breaking can honor
+    /// the mode's soft-wrap and hanging behavior.
     pub(crate) white_space_collapse: WhiteSpaceCollapse,
 }
 
@@ -466,6 +466,7 @@ impl<B: Brush> ResolvedStyle<B> {
             WordBreak(value) => self.word_break = value,
             OverflowWrap(value) => self.overflow_wrap = value,
             TextWrapMode(value) => self.text_wrap_mode = value,
+            WhiteSpaceCollapse(value) => self.white_space_collapse = value,
         }
     }
 
@@ -495,6 +496,7 @@ impl<B: Brush> ResolvedStyle<B> {
             WordBreak(value) => self.word_break == *value,
             OverflowWrap(value) => self.overflow_wrap == *value,
             TextWrapMode(value) => self.text_wrap_mode == *value,
+            WhiteSpaceCollapse(value) => self.white_space_collapse == *value,
         }
     }
 
