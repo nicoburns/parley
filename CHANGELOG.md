@@ -20,6 +20,10 @@ This release has an [MSRV] of 1.88.
 
 ### Fixed
 
+#### Parley
+
+- White space collapsing in the tree builder now operates across the whole layout instead of treating each style span separately: white space is no longer trimmed at span boundaries (e.g. `<span>foo </span>bar` now collapses to `foo bar` rather than `foobar`), and is only trimmed at the very start and end of the layout. (by [@nicoburns][])
+
 #### Fontique
 
 - Fix compilation on 32-bit platforms without 64-bit atomics (e.g. `mipsel-unknown-linux-gnu`). (#671 by [@nicoburns][])
