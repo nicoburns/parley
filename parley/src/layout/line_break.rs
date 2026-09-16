@@ -11,7 +11,7 @@ use core_maths::CoreFloat;
 use parlance::BidiLevel;
 
 use crate::layout::spacing::{EffectiveSpacing, Justification, is_word_separator};
-use crate::layout::whitespace::atom_hanging_advance;
+use crate::layout::whitespace::{atom_hanging_advance, whitespace_can_hang};
 use crate::layout::{
     BreakReason, Layout, LayoutData, LayoutItem, LayoutItemKind, LineData, LineItemData,
     LineMetrics, Run,
@@ -896,14 +896,23 @@ impl<'a, B: Brush> BreakLines<'a, B> {
                         // in the line. If there is no such line-breaking opportunity (such as if wrapping is disabled), then
                         // we fall back to appending the content to the line anyway.
                         else {
-                            let (hanging, all_hang) = atom_hanging_advance(
-                                slice,
-                                &atom,
-                                &self.layout.data.styles,
-                                spacing,
-                                item.bidi_level.is_rtl(),
-                                &mut None,
-                            );
+                            // Only atoms whose trailing clusters are whitespace can hang. A
+                            // single-cluster atom whose first character can't hang never does, so
+                            // skip the cluster walk in that common case.
+                            let (hanging, all_hang) = if whitespace_can_hang(whitespace)
+                                || atom.shaped_clusters().len() > 1
+                            {
+                                atom_hanging_advance(
+                                    slice,
+                                    &atom,
+                                    &self.layout.data.styles,
+                                    spacing,
+                                    item.bidi_level.is_rtl(),
+                                    &mut None,
+                                )
+                            } else {
+                                (0., false)
+                            };
                             if all_hang || (hanging > 0. && next_x - hanging <= max_advance) {
                                 if max_height_exceeded {
                                     return self.max_height_break_data(line_height);
